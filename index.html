@@ -1,941 +1,750 @@
 <!DOCTYPE html>
 <html lang="pt" class="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3DPrintFilament - Gestão de Filamentos</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            50: '#f0fdf4',
-                            500: '#22c55e',
-                            600: '#16a34a',
-                            700: '#15803d',
-                            900: '#14532d',
-                        },
-                        darkbg: '#0f172a',
-                        darkcard: '#1e293b',
-                        darkborder: '#334155'
-                    }
-                }
-            }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lumine 3D - Gestão de Filamentos</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+              900: '#14532d',
+            },
+            darkbg: '#0f172a',
+            darkcard: '#1e293b',
+            darkborder: '#334155'
+          }
         }
-    </script>
-    <!-- FontAwesome icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- html5-qrcode para leitura da câmara -->
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-    <!-- qrcodejs para gerar QR codes -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        
-        /* Estilos de Impressão para Etiquetas QR */
-        @media print {
-            body * { visibility: hidden; }
-            #print-section, #print-section * { visibility: visible; }
-            #print-section {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                background: white !important;
-                color: black !important;
-            }
-            .no-print { display: none !important; }
-        }
-
-        /* Estilização personalizada para leitor de QR */
-        #qr-reader video {
-            object-fit: cover !important;
-            border-radius: 0.75rem;
-        }
-        #qr-reader {
-            border: none !important;
-        }
-    </style>
+      }
+    }
+  </script>
+  <!-- FontAwesome icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- html5-qrcode para leitura da câmara -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- qrcodejs para gerar QR codes -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .glassmorphism {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    @media print {
+      body * { visibility: hidden; }
+      #printable-area, #printable-area * { visibility: visible; }
+      #printable-area { position: absolute; left: 0; top: 0; width: 100%; }
+    }
+  </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
+<body class="bg-slate-900 text-slate-100 min-h-screen pb-12 antialiased selection:bg-emerald-500 selection:text-white">
 
-    <!-- BARRA DE NAVEGAÇÃO -->
-    <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-30 shadow-md">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white shadow-lg shadow-emerald-900/40">
-                    <i class="fa-solid fa-spool text-xl"></i>
-                </div>
-                <div>
-                    <h1 class="text-lg font-bold bg-gradient-to-r from-emerald-400 to-teal-200 bg-clip-text text-transparent">FilamTrack 3D</h1>
-                    <p class="text-xs text-slate-400 hidden sm:block">Gestão Inteligente de Stock de Filamentos</p>
-                </div>
-            </div>
-
-            <div class="flex items-center space-x-2 sm:space-x-3">
-                <button onclick="openScannerModal()" class="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-xl text-sm font-semibold transition shadow-lg shadow-emerald-900/30 active:scale-95">
-                    <i class="fa-solid fa-qrcode text-base"></i>
-                    <span class="hidden sm:inline">Ler QR Code</span>
-                </button>
-                <button onclick="openFilamentModal()" class="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 sm:px-4 sm:py-2 rounded-xl text-sm font-semibold transition active:scale-95">
-                    <i class="fa-solid fa-plus text-emerald-400"></i>
-                    <span class="hidden sm:inline">Novo Filamento</span>
-                </button>
-            </div>
+  <!-- ECRÃ DE LOGIN / AUTENTICAÇÃO -->
+  <div id="auth-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950 p-4">
+    <div class="w-full max-w-md p-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl relative overflow-hidden">
+      <div class="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/10 rounded-full blur-3xl"></div>
+      
+      <div class="text-center mb-8 relative z-10">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white shadow-lg shadow-emerald-500/20 mb-4">
+          <i class="fa-solid fa-[#3D]-cube text-2xl text-white"></i>
+          <span class="font-bold text-2xl tracking-tighter">L</span>
         </div>
+        <h2 class="text-2xl font-bold text-white tracking-tight">Lumine 3D</h2>
+        <p class="text-slate-400 text-sm mt-1">Gestão Restrita de Filamentos</p>
+      </div>
+
+      <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4 relative z-10">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Utilizador</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
+              <i class="fa-solid fa-user"></i>
+            </span>
+            <input type="text" id="login-username" required placeholder="Nome de utilizador"
+              class="w-full pl-10 pr-4 py-3 bg-slate-800/80 border border-slate-700/80 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition text-slate-100 placeholder-slate-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Palavra-passe</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
+              <i class="fa-solid fa-lock"></i>
+            </span>
+            <input type="password" id="login-password" required placeholder="••••••••"
+              class="w-full pl-10 pr-4 py-3 bg-slate-800/80 border border-slate-700/80 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition text-slate-100 placeholder-slate-500">
+          </div>
+        </div>
+
+        <div id="login-error" class="hidden p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs text-center font-medium">
+          <i class="fa-solid fa-triangle-exclamation mr-1"></i> Utilizador ou palavra-passe incorretos.
+        </div>
+
+        <button type="submit"
+          class="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/20 active:scale-[0.99] transition duration-150 mt-2">
+          Entrar na Aplicação
+        </button>
+      </form>
+
+      <p class="text-xs text-slate-600 text-center mt-6">Acesso Protegido • Lumine 3D Studio</p>
+    </div>
+  </div>
+
+  <!-- APLICAÇÃO PRINCIPAL (Escondida por defeito até autenticação) -->
+  <div id="app-content" class="hidden">
+    <!-- BARRA SUPERIOR / HEADER -->
+    <header class="sticky top-0 z-30 glassmorphism border-b border-slate-800/80 mb-6">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-900 shadow-md font-extrabold text-lg">
+            L3D
+          </div>
+          <div>
+            <h1 class="font-bold text-lg leading-none text-slate-100 tracking-tight">Lumine 3D</h1>
+            <span class="text-xs text-slate-400">Gestão de Filamentos</span>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-2 sm:space-x-3">
+          <button onclick="openScanner()" class="inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-semibold transition shadow-md shadow-emerald-500/10 active:scale-95">
+            <i class="fa-solid fa-qrcode text-base"></i>
+            <span class="hidden sm:inline">Ler QR Code</span>
+          </button>
+          
+          <button onclick="openAddModal()" class="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-sm font-semibold transition active:scale-95">
+            <i class="fa-solid fa-plus text-emerald-400"></i>
+            <span class="hidden sm:inline">Novo Filamento</span>
+          </button>
+
+          <button onclick="handleLogout()" title="Encerrar Sessão" class="p-2 bg-slate-800/80 hover:bg-red-500/20 text-slate-400 hover:text-red-400 border border-slate-700/60 rounded-xl transition">
+            <i class="fa-solid fa-right-from-bracket"></i>
+          </button>
+        </div>
+      </div>
     </header>
 
-    <!-- CONTEÚDO PRINCIPAL -->
-    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
 
-        <!-- RESUMO DE ESTATÍSTICAS -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-sm backdrop-blur-sm">
-                <div class="flex items-center justify-between text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
-                    <span>Total Bobinas</span>
-                    <i class="fa-solid fa-layer-group text-emerald-500"></i>
-                </div>
-                <div class="text-2xl sm:text-3xl font-extrabold text-slate-100" id="stat-total-spools">0</div>
-                <div class="text-xs text-slate-500 mt-1" id="stat-active-spools">0 ativas em uso</div>
-            </div>
-
-            <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-sm backdrop-blur-sm">
-                <div class="flex items-center justify-between text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
-                    <span>Peso Disponível</span>
-                    <i class="fa-solid fa-weight-hanging text-teal-400"></i>
-                </div>
-                <div class="text-2xl sm:text-3xl font-extrabold text-emerald-400" id="stat-total-weight">0 kg</div>
-                <div class="text-xs text-slate-500 mt-1" id="stat-weight-percent">0% do inicial</div>
-            </div>
-
-            <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-sm backdrop-blur-sm">
-                <div class="flex items-center justify-between text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
-                    <span>Valor Estimado</span>
-                    <i class="fa-solid fa-euro-sign text-amber-400"></i>
-                </div>
-                <div class="text-2xl sm:text-3xl font-extrabold text-slate-100" id="stat-total-value">0,00 €</div>
-                <div class="text-xs text-slate-500 mt-1">Em stock restante</div>
-            </div>
-
-            <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-sm backdrop-blur-sm">
-                <div class="flex items-center justify-between text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
-                    <span>Stock Baixo</span>
-                    <i class="fa-solid fa-triangle-exclamation text-rose-500"></i>
-                </div>
-                <div class="text-2xl sm:text-3xl font-extrabold text-rose-400" id="stat-low-stock">0</div>
-                <div class="text-xs text-slate-500 mt-1">&lt; 15% restante</div>
-            </div>
+      <!-- DASHBOARD / CARTÕES DE ESTATÍSTICA -->
+      <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="p-4 bg-slate-800/50 border border-slate-800 rounded-2xl relative overflow-hidden">
+          <div class="flex justify-between items-start">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total em Stock</span>
+            <i class="fa-solid fa-[#weight-hanging] text-emerald-400 text-lg"></i>
+          </div>
+          <div class="mt-2 flex items-baseline">
+            <span id="stat-total-weight" class="text-2xl font-bold text-slate-100">0</span>
+            <span class="ml-1 text-xs text-slate-400 font-medium">kg</span>
+          </div>
+          <p class="text-xs text-slate-500 mt-1">Soma de todo o filamento</p>
         </div>
 
-        <!-- BARRA DE PESQUISA E FILTROS -->
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm space-y-4">
-            <div class="flex flex-col md:flex-row gap-3">
-                <!-- Campo de Pesquisa -->
-                <div class="relative flex-grow">
-                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500"></i>
-                    <input type="text" id="search-input" oninput="renderFilaments()" placeholder="Pesquisar por marca, tipo, cor, ID QR ou notas..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition">
-                </div>
-
-                <!-- Filtro Tipo -->
-                <div class="w-full md:w-44">
-                    <select id="filter-type" onchange="renderFilaments()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition">
-                        <option value="">Todos os Tipos</option>
-                        <option value="PLA">PLA</option>
-                        <option value="PETG">PETG</option>
-                        <option value="ABS">ABS</option>
-                        <option value="TPU">TPU</option>
-                        <option value="ASA">ASA</option>
-                        <option value="PC">PC</option>
-                        <option value="Nylon">Nylon</option>
-                        <option value="Outro">Outro</option>
-                    </select>
-                </div>
-
-                <!-- Filtro Estado -->
-                <div class="w-full md:w-44">
-                    <select id="filter-status" onchange="renderFilaments()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition">
-                        <option value="">Todos os Estados</option>
-                        <option value="new">Novo (100%)</option>
-                        <option value="in_use">Em Uso (&gt;0%)</option>
-                        <option value="empty">Vazio (0%)</option>
-                    </select>
-                </div>
-
-                <!-- Filtro Marca -->
-                <div class="w-full md:w-44">
-                    <select id="filter-brand" onchange="renderFilaments()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition">
-                        <option value="">Todas as Marcas</option>
-                        <!-- Preenchido dinamicamente -->
-                    </select>
-                </div>
-            </div>
+        <div class="p-4 bg-slate-800/50 border border-slate-800 rounded-2xl relative overflow-hidden">
+          <div class="flex justify-between items-start">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Bobinas Ativas</span>
+            <i class="fa-solid fa-[#compact-disc] text-teal-400 text-lg"></i>
+          </div>
+          <div class="mt-2 flex items-baseline">
+            <span id="stat-active-spools" class="text-2xl font-bold text-slate-100">0</span>
+            <span class="ml-1 text-xs text-slate-400 font-medium">unidades</span>
+          </div>
+          <p class="text-xs text-slate-500 mt-1">Disponíveis para uso</p>
         </div>
 
-        <!-- GRELHA DE FILAMENTOS -->
-        <div id="filaments-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            <!-- Os cartões de filamento serão injetados aqui -->
+        <div class="p-4 bg-slate-800/50 border border-slate-800 rounded-2xl relative overflow-hidden">
+          <div class="flex justify-between items-start">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Valor Estimado</span>
+            <i class="fa-solid fa-[#euro-sign] text-amber-400 text-lg"></i>
+          </div>
+          <div class="mt-2 flex items-baseline">
+            <span id="stat-total-value" class="text-2xl font-bold text-slate-100">0.00</span>
+            <span class="ml-1 text-xs text-slate-400 font-medium">€</span>
+          </div>
+          <p class="text-xs text-slate-500 mt-1">Investimento em stock</p>
         </div>
 
-        <!-- MENSAGEM DE NENHUM RESULTADO -->
-        <div id="empty-state" class="hidden flex-col items-center justify-center py-16 text-center">
-            <div class="w-20 h-20 bg-slate-900 border border-slate-800 rounded-full flex items-center justify-center text-slate-600 mb-4">
-                <i class="fa-solid fa-box-open text-3xl"></i>
-            </div>
-            <h3 class="text-lg font-semibold text-slate-300">Nenhum filamento encontrado</h3>
-            <p class="text-sm text-slate-500 max-w-sm mt-1">Tente ajustar os seus filtros de pesquisa ou adicione uma nova bobina à sua coleção.</p>
-            <button onclick="openFilamentModal()" class="mt-4 bg-emerald-600 hover:bg-emerald-500 text-white text-sm px-4 py-2 rounded-xl transition">
-                + Adicionar Filamento
-            </button>
+        <div class="p-4 bg-slate-800/50 border border-slate-800 rounded-2xl relative overflow-hidden">
+          <div class="flex justify-between items-start">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Stock Baixo</span>
+            <i class="fa-solid fa-[#triangle-exclamation] text-rose-400 text-lg"></i>
+          </div>
+          <div class="mt-2 flex items-baseline">
+            <span id="stat-low-stock" class="text-2xl font-bold text-rose-400">0</span>
+            <span class="ml-1 text-xs text-slate-400 font-medium">bobinas</span>
+          </div>
+          <p class="text-xs text-slate-500 mt-1">&lt; 200g restantes</p>
         </div>
+      </section>
+
+      <!-- BARRA DE FILTROS E PESQUISA -->
+      <section class="flex flex-col sm:flex-row gap-3 items-center justify-between bg-slate-800/30 p-3 rounded-2xl border border-slate-800">
+        <div class="relative w-full sm:w-72">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+          <input type="text" id="search-input" oninput="renderApp()" placeholder="Pesquisar marca, cor..." 
+            class="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700/70 rounded-xl text-sm focus:outline-none focus:border-emerald-500 text-slate-200 placeholder-slate-400">
+        </div>
+
+        <div class="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+          <select id="filter-material" onchange="renderApp()" class="px-3 py-2 bg-slate-800 border border-slate-700/70 rounded-xl text-sm text-slate-300 focus:outline-none focus:border-emerald-500">
+            <option value="">Todos Materiais</option>
+            <option value="PLA">PLA</option>
+            <option value="PETG">PETG</option>
+            <option value="ABS">ABS</option>
+            <option value="TPU">TPU</option>
+            <option value="ASA">ASA</option>
+            <option value="PC">PC</option>
+            <option value="Nylon">Nylon</option>
+          </select>
+
+          <select id="filter-status" onchange="renderApp()" class="px-3 py-2 bg-slate-800 border border-slate-700/70 rounded-xl text-sm text-slate-300 focus:outline-none focus:border-emerald-500">
+            <option value="">Todos Estados</option>
+            <option value="Novo">Novo</option>
+            <option value="Em Uso">Em Uso</option>
+            <option value="Vazio">Vazio</option>
+          </select>
+        </div>
+      </section>
+
+      <!-- GRELHA DE FILAMENTOS -->
+      <section id="filament-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <!-- Inserido via JavaScript -->
+      </section>
+
+      <!-- ESTADO VAZIO -->
+      <div id="empty-state" class="hidden text-center py-16 bg-slate-800/20 rounded-2xl border border-dashed border-slate-800">
+        <div class="w-16 h-16 bg-slate-800 text-slate-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+          <i class="fa-solid fa-[#box-open]"></i>
+        </div>
+        <h3 class="text-base font-semibold text-slate-300">Nenhum filamento encontrado</h3>
+        <p class="text-sm text-slate-500 max-w-sm mx-auto mt-1">Tente ajustar os filtros de pesquisa ou adicione um novo filamento à lista.</p>
+      </div>
+
     </main>
+  </div>
 
-    <!-- FOOTER -->
-    <footer class="bg-slate-900 border-t border-slate-800 py-6 mt-12 text-center text-xs text-slate-500">
-        <p>FilamTrack 3D &copy; 2026 - Gestão de Filamentos & Impressão 3D. Dados guardados localmente.</p>
-    </footer>
-
-    <!-- MODAL: REGISTAR / EDITAR FILAMENTO -->
-    <div id="filament-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4 overflow-y-auto">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col">
-            <div class="flex items-center justify-between p-5 border-b border-slate-800 sticky top-0 bg-slate-900 z-10">
-                <h3 id="modal-title" class="text-lg font-bold text-slate-100">Adicionar Novo Filamento</h3>
-                <button onclick="closeFilamentModal()" class="text-slate-400 hover:text-slate-200 p-1 rounded-lg">
-                    <i class="fa-solid fa-xmark text-xl"></i>
-                </button>
-            </div>
-
-            <form id="filament-form" onsubmit="saveFilament(event)" class="p-5 space-y-4">
-                <input type="hidden" id="filament-id">
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Marca *</label>
-                        <input type="text" id="form-brand" required placeholder="Ex: Bambu Lab, Prusament, eSUN" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Tipo de Material *</label>
-                        <select id="form-type" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
-                            <option value="PLA">PLA</option>
-                            <option value="PETG">PETG</option>
-                            <option value="ABS">ABS</option>
-                            <option value="TPU">TPU</option>
-                            <option value="ASA">ASA</option>
-                            <option value="PC">PC</option>
-                            <option value="Nylon">Nylon</option>
-                            <option value="Outro">Outro</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Nome / Variante da Cor *</label>
-                        <input type="text" id="form-color-name" required placeholder="Ex: Preto Mate, Azul Seda, Transparente" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Cor de Referência Visível</label>
-                        <div class="flex space-x-2 items-center">
-                            <input type="color" id="form-color-hex" value="#22c55e" class="h-9 w-12 bg-slate-950 border border-slate-800 rounded-lg p-0.5 cursor-pointer">
-                            <span class="text-xs text-slate-400">Escolha a cor para o indicador</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Peso Inicial (g) *</label>
-                        <input type="number" id="form-initial-weight" required min="1" step="1" value="1000" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Peso Atual (g) *</label>
-                        <input type="number" id="form-remaining-weight" required min="0" step="1" value="1000" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Preço (€)</label>
-                        <input type="number" id="form-price" min="0" step="0.01" placeholder="24.90" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Temp. Nozzle (°C)</label>
-                        <input type="text" id="form-temp-nozzle" placeholder="Ex: 200 - 220" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Temp. Mesa (°C)</label>
-                        <input type="text" id="form-temp-bed" placeholder="Ex: 50 - 60" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">Código QR / ID Personalizado (Opcional)</label>
-                    <div class="flex space-x-2">
-                        <input type="text" id="form-qr-code" placeholder="Gerado automaticamente se vazio" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
-                        <button type="button" onclick="generateRandomQRId()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-xl text-xs font-medium border border-slate-700 whitespace-nowrap">Gerar ID</button>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">Notas / Parâmetros Especiais</label>
-                    <textarea id="form-notes" rows="2" placeholder="Ex: Necessita secagem prévia a 50°C. Ótima aderência à mesa PEI." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500"></textarea>
-                </div>
-
-                <div class="pt-4 border-t border-slate-800 flex justify-end space-x-3">
-                    <button type="button" onclick="closeFilamentModal()" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-400 hover:bg-slate-800 transition">Cancelar</button>
-                    <button type="submit" class="px-5 py-2 rounded-xl text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/40 transition">Guardar Filamento</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL: LEITOR DE QR CODE DA CÂMARA -->
-    <div id="scanner-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
-            <div class="flex items-center justify-between p-4 border-b border-slate-800">
-                <div class="flex items-center space-x-2">
-                    <i class="fa-solid fa-camera text-emerald-400"></i>
-                    <h3 class="text-base font-bold text-slate-100">Leitor de Código QR</h3>
-                </div>
-                <button onclick="closeScannerModal()" class="text-slate-400 hover:text-slate-200 p-1 rounded-lg">
-                    <i class="fa-solid fa-xmark text-xl"></i>
-                </button>
-            </div>
-
-            <div class="p-4 space-y-4">
-                <p class="text-xs text-slate-400 text-center">Aponte a câmara do seu dispositivo para o QR Code da bobina para identificar instantaneamente o filamento.</p>
-                
-                <div class="relative bg-slate-950 border border-slate-800 rounded-xl overflow-hidden min-h-[260px] flex items-center justify-center">
-                    <div id="qr-reader" class="w-full"></div>
-                </div>
-
-                <div id="scan-result" class="hidden p-3 bg-emerald-950/60 border border-emerald-800/60 rounded-xl text-xs text-emerald-300">
-                    <p class="font-bold">Filamento Detetado!</p>
-                    <p id="scan-result-text" class="truncate mt-0.5"></p>
-                </div>
-            </div>
-
-            <div class="p-4 bg-slate-950 border-t border-slate-800 flex justify-end">
-                <button onclick="closeScannerModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 rounded-xl text-sm font-semibold transition">Fechar Leitor</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL: GERAR E IMPRIMIR ETIQUETA QR -->
-    <div id="qr-print-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm shadow-2xl flex flex-col overflow-hidden">
-            <div class="flex items-center justify-between p-4 border-b border-slate-800">
-                <h3 class="text-base font-bold text-slate-100">Etiqueta de QR Code</h3>
-                <button onclick="closeQrPrintModal()" class="text-slate-400 hover:text-slate-200 p-1 rounded-lg">
-                    <i class="fa-solid fa-xmark text-xl"></i>
-                </button>
-            </div>
-
-            <div class="p-6 flex flex-col items-center justify-center space-y-4 bg-slate-900">
-                <!-- ÁREA A SER IMPRESSA -->
-                <div id="print-section" class="bg-white p-4 rounded-xl text-slate-900 shadow-md flex flex-col items-center text-center w-56 border border-slate-200">
-                    <div id="qrcode-container" class="mb-3 flex justify-center"></div>
-                    <div class="font-bold text-sm tracking-tight leading-tight uppercase" id="print-brand-type">Bambu Lab - PLA</div>
-                    <div class="text-xs text-slate-600 font-medium truncate w-full" id="print-color">Preto Mate</div>
-                    <div class="text-[10px] font-mono text-slate-500 mt-1 bg-slate-100 px-2 py-0.5 rounded" id="print-qr-code">ID: FIL-1234</div>
-                </div>
-                <p class="text-xs text-slate-400 text-center">Imprima e cole esta etiqueta na sua bobina de filamento.</p>
-            </div>
-
-            <div class="p-4 bg-slate-950 border-t border-slate-800 flex space-x-3">
-                <button onclick="closeQrPrintModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-xl text-sm font-semibold transition">Voltar</button>
-                <button onclick="window.print()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-xl text-sm font-semibold transition shadow-lg shadow-emerald-900/40 flex items-center justify-center space-x-2">
-                    <i class="fa-solid fa-print"></i>
-                    <span>Imprimir</span>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL: DEDUZIR CONSU MO APÓS IMPRESSÃO -->
-    <div id="consume-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md shadow-2xl flex flex-col">
-            <div class="flex items-center justify-between p-4 border-b border-slate-800">
-                <h3 class="text-base font-bold text-slate-100">Registar Consumo de Impressão</h3>
-                <button onclick="closeConsumeModal()" class="text-slate-400 hover:text-slate-200 p-1 rounded-lg">
-                    <i class="fa-solid fa-xmark text-xl"></i>
-                </button>
-            </div>
-
-            <form id="consume-form" onsubmit="applyConsumption(event)" class="p-5 space-y-4">
-                <input type="hidden" id="consume-filament-id">
-                
-                <div class="bg-slate-950 border border-slate-800 p-3 rounded-xl flex items-center space-x-3">
-                    <div id="consume-color-dot" class="w-6 h-6 rounded-full border border-slate-700 flex-shrink-0"></div>
-                    <div>
-                        <div id="consume-name" class="text-sm font-bold text-slate-200">Bambu PLA - Preto</div>
-                        <div id="consume-current-weight" class="text-xs text-slate-400">Peso Atual: 750g</div>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">Filamento Utilizado na Impressão (Gramas) *</label>
-                    <div class="relative">
-                        <input type="number" id="consume-amount" required min="1" step="1" placeholder="Ex: 45" class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-3 pr-12 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
-                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-bold">gramas</span>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">Calculadora Rápida / Atalhos</label>
-                    <div class="grid grid-cols-4 gap-2">
-                        <button type="button" onclick="setConsumeAmount(10)" class="bg-slate-950 border border-slate-800 hover:border-slate-700 py-1.5 rounded-lg text-xs font-medium text-slate-300">+10g</button>
-                        <button type="button" onclick="setConsumeAmount(25)" class="bg-slate-950 border border-slate-800 hover:border-slate-700 py-1.5 rounded-lg text-xs font-medium text-slate-300">+25g</button>
-                        <button type="button" onclick="setConsumeAmount(50)" class="bg-slate-950 border border-slate-800 hover:border-slate-700 py-1.5 rounded-lg text-xs font-medium text-slate-300">+50g</button>
-                        <button type="button" onclick="setConsumeAmount(100)" class="bg-slate-950 border border-slate-800 hover:border-slate-700 py-1.5 rounded-lg text-xs font-medium text-slate-300">+100g</button>
-                    </div>
-                </div>
-
-                <div class="pt-3 border-t border-slate-800 flex justify-end space-x-3">
-                    <button type="button" onclick="closeConsumeModal()" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-400 hover:bg-slate-800 transition">Cancelar</button>
-                    <button type="submit" class="px-5 py-2 rounded-xl text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-lg shadow-emerald-900/40">Subtrair Consumo</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- NOTIFICAÇÃO TOAST -->
-    <div id="toast" class="fixed bottom-5 right-5 z-50 bg-slate-900 border border-slate-700 text-slate-100 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
-        <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
-        <span id="toast-message" class="text-sm font-medium">Ação concluída com sucesso!</span>
-    </div>
-
-    <!-- JAVASCRIPT DA APLICAÇÃO -->
-    <script>
-        // --- BASE DE DADOS INICIAL / LOCAL STORAGE ---
-        const STORAGE_KEY = '3d_filaments_data_v1';
+  <!-- MODAL: ADD / EDIT FILAMENT -->
+  <div id="modal-filament" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+      <div class="px-6 py-4 border-b border-slate-800 flex justify-between items-center">
+        <h3 id="modal-title" class="font-bold text-lg text-slate-100">Adicionar Filamento</h3>
+        <button onclick="closeModal('modal-filament')" class="text-slate-400 hover:text-slate-200">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      
+      <form id="filament-form" onsubmit="saveFilament(event)" class="p-6 space-y-4 overflow-y-auto flex-1">
+        <input type="hidden" id="form-id">
         
-        const initialSampleData = [
-            {
-                id: 'fil-001',
-                brand: 'Bambu Lab',
-                type: 'PLA',
-                colorName: 'Verde Bambu',
-                colorHex: '#00ae42',
-                initialWeight: 1000,
-                remainingWeight: 850,
-                tempNozzle: '200-220',
-                tempBed: '55-65',
-                price: 24.99,
-                qrCode: 'FIL-BL-PLA-GRN',
-                notes: 'Bobina de alta velocidade. Excelente acabamento de superfície.'
-            },
-            {
-                id: 'fil-002',
-                brand: 'Prusament',
-                type: 'PETG',
-                colorName: 'Laranja Prusa',
-                colorHex: '#f15a24',
-                initialWeight: 1000,
-                remainingWeight: 420,
-                tempNozzle: '240-250',
-                tempBed: '80-90',
-                price: 29.90,
-                qrCode: 'FIL-PRUSA-PETG-ORG',
-                notes: 'Resistente ao impacto. Recomendado usar spray de libertação na mesa de vidro.'
-            },
-            {
-                id: 'fil-003',
-                brand: 'eSUN',
-                type: 'PLA',
-                colorName: 'Preto Mate',
-                colorHex: '#18181b',
-                initialWeight: 1000,
-                remainingWeight: 110,
-                tempNozzle: '205-215',
-                tempBed: '50-60',
-                price: 19.99,
-                qrCode: 'FIL-ESUN-PLAMAT-BLK',
-                notes: 'Disfarça muito bem as linhas de camada. Guardar na caixa seca.'
-            },
-            {
-                id: 'fil-004',
-                brand: 'Polymaker',
-                type: 'TPU',
-                colorName: 'Azul Translúcido',
-                colorHex: '#0284c7',
-                initialWeight: 750,
-                remainingWeight: 750,
-                tempNozzle: '220-235',
-                tempBed: '40-50',
-                price: 32.50,
-                qrCode: 'FIL-POLY-TPU-BLU',
-                notes: 'Filamento flexível 95A. Imprimir devagar (30mm/s) sem retração excessiva.'
-            }
-        ];
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Marca *</label>
+            <input type="text" id="form-brand" required placeholder="Ex: Bambu Lab, Prusament" 
+              class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-emerald-500 text-slate-100">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Material *</label>
+            <select id="form-material" required class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-emerald-500 text-slate-100">
+              <option value="PLA">PLA</option>
+              <option value="PETG">PETG</option>
+              <option value="ABS">ABS</option>
+              <option value="TPU">TPU</option>
+              <option value="ASA">ASA</option>
+              <option value="PC">PC</option>
+              <option value="Nylon">Nylon</option>
+            </select>
+          </div>
+        </div>
 
-        let filaments = [];
-        let html5QrCodeScanner = null;
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Nome da Cor *</label>
+            <input type="text" id="form-color-name" required placeholder="Ex: Verde Jade" 
+              class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-emerald-500 text-slate-100">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Seletor de Cor</label>
+            <div class="flex items-center gap-2">
+              <input type="color" id="form-color-hex" value="#22c55e" class="h-9 w-12 bg-slate-800 border border-slate-700 rounded-lg cursor-pointer p-1">
+              <span class="text-xs text-slate-400">Amostra visual</span>
+            </div>
+          </div>
+        </div>
 
-        // --- INICIALIZAÇÃO DA APLICAÇÃO ---
-        window.onload = function() {
-            loadFilaments();
-            renderFilaments();
-            populateBrandFilter();
-        };
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Peso Total Inicial (g)</label>
+            <input type="number" id="form-total-weight" required value="1000" min="50" step="50"
+              class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-emerald-500 text-slate-100">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Peso Restante (g)</label>
+            <input type="number" id="form-current-weight" required value="1000" min="0" step="5"
+              class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-emerald-500 text-slate-100">
+          </div>
+        </div>
 
-        // Carregar filamentos do localStorage ou dados de amostra
-        function loadFilaments() {
-            const stored = localStorage.getItem(STORAGE_KEY);
-            if (stored) {
-                try {
-                    filaments = JSON.parse(stored);
-                } catch(e) {
-                    filaments = [...initialSampleData];
-                }
-            } else {
-                filaments = [...initialSampleData];
-                saveToLocalStorage();
-            }
-        }
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Temp. Nozzle (°C)</label>
+            <input type="text" id="form-temp-nozzle" placeholder="200-220" 
+              class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-emerald-500 text-slate-100">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Temp. Bed (°C)</label>
+            <input type="text" id="form-temp-bed" placeholder="55-65" 
+              class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-emerald-500 text-slate-100">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Preço (€)</label>
+            <input type="number" id="form-price" step="0.01" placeholder="24.90" 
+              class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-emerald-500 text-slate-100">
+          </div>
+        </div>
 
-        function saveToLocalStorage() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(filaments));
-        }
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Notas / Definições</label>
+          <textarea id="form-notes" rows="2" placeholder="Secar a 50°C durante 4h..." 
+            class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-emerald-500 text-slate-100"></textarea>
+        </div>
 
-        // --- RENDERIZAÇÃO E FILTRAGEM DE ETIQUETAS E GRELHA ---
-        function renderFilaments() {
-            const grid = document.getElementById('filaments-grid');
-            const emptyState = document.getElementById('empty-state');
-            
-            const searchVal = document.getElementById('search-input').value.toLowerCase().trim();
-            const filterType = document.getElementById('filter-type').value;
-            const filterStatus = document.getElementById('filter-status').value;
-            const filterBrand = document.getElementById('filter-brand').value;
+        <div class="pt-4 flex justify-end gap-3 border-t border-slate-800">
+          <button type="button" onclick="closeModal('modal-filament')" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-semibold transition">Cancelar</button>
+          <button type="submit" class="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-semibold transition shadow-md shadow-emerald-500/20">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
-            // Filtragem dos elementos
-            const filtered = filaments.filter(item => {
-                // Pesquisa genérica por texto
-                const matchesSearch = !searchVal || 
-                    item.brand.toLowerCase().includes(searchVal) ||
-                    item.type.toLowerCase().includes(searchVal) ||
-                    item.colorName.toLowerCase().includes(searchVal) ||
-                    (item.qrCode && item.qrCode.toLowerCase().includes(searchVal)) ||
-                    (item.notes && item.notes.toLowerCase().includes(searchVal));
+  <!-- MODAL: SCANNER QR CODE -->
+  <div id="modal-scanner" class="fixed inset-0 z-50 hidden bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-800 flex justify-between items-center">
+        <h3 class="font-bold text-lg text-slate-100"><i class="fa-solid fa-qrcode text-emerald-400 mr-2"></i>Digitalizar QR Code</h3>
+        <button onclick="closeScanner()" class="text-slate-400 hover:text-slate-200">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div class="p-6 text-center">
+        <div id="reader" class="overflow-hidden rounded-xl bg-slate-950 border border-slate-800"></div>
+        <p class="text-xs text-slate-400 mt-4">Aproxime a câmara do QR Code colado na bobina de filamento.</p>
+      </div>
+    </div>
+  </div>
 
-                // Filtro Tipo
-                const matchesType = !filterType || item.type === filterType;
+  <!-- MODAL: DEDUZIR PESO APÓS IMPRESSÃO -->
+  <div id="modal-consume" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-800 flex justify-between items-center">
+        <h3 class="font-bold text-lg text-slate-100">Registar Consumo</h3>
+        <button onclick="closeModal('modal-consume')" class="text-slate-400 hover:text-slate-200">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div class="p-6 space-y-4">
+        <div id="consume-spool-info" class="p-3 bg-slate-800/60 rounded-xl border border-slate-800 flex items-center gap-3">
+          <!-- Dados da bobina selecionada -->
+        </div>
 
-                // Filtro Marca
-                const matchesBrand = !filterBrand || item.brand === filterBrand;
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Peso Impresso (g)</label>
+          <input type="number" id="consume-amount" value="30" min="1" step="1" 
+            class="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-lg font-bold text-emerald-400 focus:outline-none focus:border-emerald-500">
+        </div>
 
-                // Filtro Estado
-                let matchesStatus = true;
-                const ratio = item.initialWeight > 0 ? (item.remainingWeight / item.initialWeight) : 0;
-                if (filterStatus === 'new') matchesStatus = ratio >= 0.98;
-                else if (filterStatus === 'in_use') matchesStatus = ratio > 0 && ratio < 0.98;
-                else if (filterStatus === 'empty') matchesStatus = item.remainingWeight <= 0;
+        <div class="grid grid-cols-4 gap-2">
+          <button type="button" onclick="setConsumeAmount(10)" class="py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 rounded-lg">+10g</button>
+          <button type="button" onclick="setConsumeAmount(25)" class="py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 rounded-lg">+25g</button>
+          <button type="button" onclick="setConsumeAmount(50)" class="py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 rounded-lg">+50g</button>
+          <button type="button" onclick="setConsumeAmount(100)" class="py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 rounded-lg">+100g</button>
+        </div>
 
-                return matchesSearch && matchesType && matchesBrand && matchesStatus;
-            });
+        <button onclick="applyConsumption()" class="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition shadow-md shadow-emerald-500/20">
+          Subtrair do Stock
+        </button>
+      </div>
+    </div>
+  </div>
 
-            // Atualizar Estatísticas Rápidas
-            updateStats();
+  <!-- MODAL: VISUALIZAR / IMPRIMIR QR CODE E ETIQUETA -->
+  <div id="modal-qr" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-800 flex justify-between items-center">
+        <h3 class="font-bold text-lg text-slate-100">Etiqueta QR Code</h3>
+        <button onclick="closeModal('modal-qr')" class="text-slate-400 hover:text-slate-200">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      
+      <div class="p-6 text-center space-y-4">
+        <!-- ÁREA IMPRIMÍVEL -->
+        <div id="printable-area" class="p-4 bg-white text-slate-900 rounded-2xl border border-slate-200 shadow-sm inline-block w-full">
+          <div id="qr-code-target" class="flex justify-center mb-3"></div>
+          <h4 id="qr-label-title" class="font-bold text-base leading-tight">Bambu Lab PLA</h4>
+          <p id="qr-label-sub" class="text-xs text-slate-600">Verde Jade (1000g)</p>
+          <p id="qr-label-id" class="text-[10px] font-mono text-slate-400 mt-1 uppercase tracking-widest"></p>
+        </div>
 
-            // Atualizar UI da Grelha
-            grid.innerHTML = '';
-            if (filtered.length === 0) {
-                emptyState.classList.remove('hidden');
-                emptyState.classList.add('flex');
-            } else {
-                emptyState.classList.add('hidden');
-                emptyState.classList.remove('flex');
+        <button onclick="window.print()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-print"></i> Imprimir Etiqueta
+        </button>
+      </div>
+    </div>
+  </div>
 
-                filtered.forEach(item => {
-                    grid.appendChild(createFilamentCard(item));
-                });
-            }
-        }
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // DADOS INICIAIS DE EXEMPLO
+    const INITIAL_DATA = [
+      { id: "FIL-8912", brand: "Bambu Lab", material: "PLA", colorName: "Verde Jade", colorHex: "#22c55e", totalWeight: 1000, currentWeight: 750, tempNozzle: "200-220", tempBed: "55-65", price: 24.90, notes: "Excelente acabamento com perfil predefinido da Bambu." },
+      { id: "FIL-4321", brand: "Prusament", material: "PETG", colorName: "Laranja Prusa", colorHex: "#f97316", totalWeight: 1000, currentWeight: 320, tempNozzle: "240-250", tempBed: "80-90", price: 29.99, notes: "Ótima resistência mecânica. Manter seco." },
+      { id: "FIL-1092", brand: "eSUN", material: "ABS", colorName: "Preto Mate", colorHex: "#1e293b", totalWeight: 1000, currentWeight: 120, tempNozzle: "240-260", tempBed: "90-100", price: 21.50, notes: "Requer câmara fechada para evitar empenamento." },
+      { id: "FIL-6754", brand: "Polymaker", material: "TPU", colorName: "Transparente", colorHex: "#38bdf8", totalWeight: 750, currentWeight: 680, tempNozzle: "210-230", tempBed: "45-60", price: 34.00, notes: "Velocidade máx de impressão 30mm/s." }
+    ];
 
-        // Criação de Cartão HTML para Filamento
-        function createFilamentCard(item) {
-            const percent = item.initialWeight > 0 ? Math.max(0, Math.min(100, Math.round((item.remainingWeight / item.initialWeight) * 100))) : 0;
-            
-            // Definição de cores para a barra de progresso
-            let progressColor = 'bg-emerald-500';
-            if (percent < 15) progressColor = 'bg-rose-500';
-            else if (percent < 40) progressColor = 'bg-amber-500';
+    let filaments = JSON.parse(localStorage.getItem('lumine3d_filaments')) || INITIAL_DATA;
+    let html5QrcodeScanner = null;
+    let activeConsumeId = null;
 
-            const card = document.createElement('div');
-            card.className = 'bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col justify-between transition-all duration-200 hover:border-slate-700 hover:shadow-emerald-950/20';
-            
-            card.innerHTML = `
-                <div>
-                    <!-- Cabeçalho do Cartão -->
-                    <div class="flex items-start justify-between mb-3">
-                        <div class="flex items-center space-x-3">
-                            <span class="w-5 h-5 rounded-full border border-slate-700 shadow-sm flex-shrink-0" style="background-color: ${item.colorHex || '#94a3b8'}"></span>
-                            <div>
-                                <h4 class="font-bold text-slate-100 text-base leading-snug">${escapeHtml(item.brand)}</h4>
-                                <div class="flex items-center space-x-2 text-xs">
-                                    <span class="bg-slate-800 text-emerald-400 font-semibold px-2 py-0.5 rounded border border-slate-700">${escapeHtml(item.type)}</span>
-                                    <span class="text-slate-400 truncate max-w-[120px]">${escapeHtml(item.colorName)}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex items-center space-x-1">
-                            <button onclick="openQrPrintModal('${item.id}')" title="Gerar Etiquetas / QR Code" class="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded-lg transition">
-                                <i class="fa-solid fa-qrcode text-base"></i>
-                            </button>
-                            <button onclick="editFilament('${item.id}')" title="Editar Filamento" class="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition">
-                                <i class="fa-solid fa-pen-to-square text-base"></i>
-                            </button>
-                            <button onclick="deleteFilament('${item.id}')" title="Apagar Filamento" class="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition">
-                                <i class="fa-solid fa-trash-can text-base"></i>
-                            </button>
-                        </div>
+    // CREDENCIAIS DE ACESSO DEFINIDAS
+    const AUTH_USER = "Lumine3D";
+    const AUTH_PASS = "230026583";
+
+    // INICIALIZAÇÃO E AUTENTICAÇÃO
+    window.addEventListener('DOMContentLoaded', () => {
+      if (localStorage.getItem('lumine3d_authenticated') === 'true') {
+        showApp();
+      } else {
+        showAuthScreen();
+      }
+    });
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const user = document.getElementById('login-username').value.trim();
+      const pass = document.getElementById('login-password').value.trim();
+      const errorDiv = document.getElementById('login-error');
+
+      if (user === AUTH_USER && pass === AUTH_PASS) {
+        localStorage.setItem('lumine3d_authenticated', 'true');
+        errorDiv.classList.add('hidden');
+        showApp();
+      } else {
+        errorDiv.classList.remove('hidden');
+      }
+    }
+
+    function handleLogout() {
+      localStorage.removeItem('lumine3d_authenticated');
+      showAuthScreen();
+    }
+
+    function showAuthScreen() {
+      document.getElementById('auth-screen').classList.remove('hidden');
+      document.getElementById('app-content').classList.add('hidden');
+    }
+
+    function showApp() {
+      document.getElementById('auth-screen').classList.add('hidden');
+      document.getElementById('app-content').classList.remove('hidden');
+      renderApp();
+    }
+
+    function saveToStorage() {
+      localStorage.setItem('lumine3d_filaments', JSON.stringify(filaments));
+    }
+
+    // RENDERIZAR INTERFACE
+    function renderApp() {
+      const search = document.getElementById('search-input').value.toLowerCase();
+      const matFilter = document.getElementById('filter-material').value;
+      const statusFilter = document.getElementById('filter-status').value;
+
+      const filtered = filaments.filter(f => {
+        const matchesSearch = f.brand.toLowerCase().includes(search) || 
+                              f.colorName.toLowerCase().includes(search) || 
+                              f.material.toLowerCase().includes(search) ||
+                              f.id.toLowerCase().includes(search);
+        
+        const matchesMat = !matFilter || f.material === matFilter;
+        
+        let status = 'Em Uso';
+        if (f.currentWeight <= 0) status = 'Vazio';
+        else if (f.currentWeight >= f.totalWeight) status = 'Novo';
+        const matchesStatus = !statusFilter || status === statusFilter;
+
+        return matchesSearch && matchesMat && matchesStatus;
+      });
+
+      renderStats();
+      renderGrid(filtered);
+    }
+
+    function renderStats() {
+      const totalWeightGrams = filaments.reduce((acc, f) => acc + f.currentWeight, 0);
+      const activeCount = filaments.filter(f => f.currentWeight > 0).length;
+      const totalVal = filaments.reduce((acc, f) => acc + (f.price ? (f.price * (f.currentWeight / f.totalWeight)) : 0), 0);
+      const lowStockCount = filaments.filter(f => f.currentWeight > 0 && f.currentWeight < 200).length;
+
+      document.getElementById('stat-total-weight').textContent = (totalWeightGrams / 1000).toFixed(2);
+      document.getElementById('stat-active-spools').textContent = activeCount;
+      document.getElementById('stat-total-value').textContent = totalVal.toFixed(2);
+      document.getElementById('stat-low-stock').textContent = lowStockCount;
+    }
+
+    function renderGrid(items) {
+      const grid = document.getElementById('filament-grid');
+      const emptyState = document.getElementById('empty-state');
+
+      if (items.length === 0) {
+        grid.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      grid.innerHTML = items.map(item => {
+        const percentage = Math.max(0, Math.min(100, Math.round((item.currentWeight / item.totalWeight) * 100)));
+        let progressColor = 'bg-emerald-500';
+        if (percentage < 20) progressColor = 'bg-rose-500';
+        else if (percentage < 50) progressColor = 'bg-amber-500';
+
+        return `
+          <div class="bg-slate-800/40 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition flex flex-col justify-between relative group">
+            <div>
+              <div class="flex items-start justify-between mb-3">
+                <div class="flex items-center space-x-3">
+                  <div class="w-7 h-7 rounded-full border-2 border-slate-700 shadow-inner flex-shrink-0" style="background-color: ${item.colorHex}"></div>
+                  <div>
+                    <h3 class="font-bold text-slate-100 leading-tight">${item.brand}</h3>
+                    <div class="flex items-center gap-2 mt-0.5">
+                      <span class="text-xs px-2 py-0.5 rounded-md bg-slate-800 font-semibold text-emerald-400 border border-slate-700/50">${item.material}</span>
+                      <span class="text-xs text-slate-400 font-medium">${item.colorName}</span>
                     </div>
-
-                    <!-- Barra Visual de Progresso do Peso -->
-                    <div class="mt-4 space-y-1.5">
-                        <div class="flex justify-between items-center text-xs font-semibold">
-                            <span class="text-slate-300">${item.remainingWeight} g <span class="text-slate-500 font-normal">/ ${item.initialWeight} g</span></span>
-                            <span class="${percent < 15 ? 'text-rose-400 font-bold' : 'text-slate-400'}">${percent}%</span>
-                        </div>
-                        <div class="w-full bg-slate-950 h-3 rounded-full overflow-hidden p-0.5 border border-slate-800">
-                            <div class="${progressColor} h-full rounded-full transition-all duration-500" style="width: ${percent}%"></div>
-                        </div>
-                    </div>
-
-                    <!-- Informações Adicionais (Temperaturas & Notas) -->
-                    <div class="mt-4 pt-3 border-t border-slate-800/80 grid grid-cols-2 gap-2 text-xs">
-                        <div class="flex items-center space-x-1.5 text-slate-400">
-                            <i class="fa-solid fa-temperature-arrow-up text-emerald-500"></i>
-                            <span>Bocal: <strong class="text-slate-200 font-medium">${escapeHtml(item.tempNozzle || 'N/A')}°C</strong></span>
-                        </div>
-                        <div class="flex items-center space-x-1.5 text-slate-400">
-                            <i class="fa-solid fa-mattress-pillow text-teal-400"></i>
-                            <span>Mesa: <strong class="text-slate-200 font-medium">${escapeHtml(item.tempBed || 'N/A')}°C</strong></span>
-                        </div>
-                    </div>
-
-                    ${item.notes ? `
-                        <p class="mt-2 text-xs text-slate-400 bg-slate-950/60 p-2 rounded-lg border border-slate-800 line-clamp-2 italic">
-                            "${escapeHtml(item.notes)}"
-                        </p>
-                    ` : ''}
+                  </div>
                 </div>
 
-                <!-- Botões de Ação do Cartão -->
-                <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between">
-                    <span class="text-xs font-mono text-slate-500 truncate max-w-[120px]" title="ID do QR Code">
-                        ID: ${escapeHtml(item.qrCode || item.id)}
-                    </span>
-                    <button onclick="openConsumeModal('${item.id}')" class="bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-500/30 hover:border-emerald-500 text-emerald-400 hover:text-white px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center space-x-1.5">
-                        <i class="fa-solid fa-minus"></i>
-                        <span>Registar Consumo</span>
-                    </button>
+                <div class="flex items-center space-x-1">
+                  <button onclick="openQRModal('${item.id}')" title="Etiqueta QR Code" class="p-1.5 text-slate-400 hover:text-emerald-400 rounded-lg hover:bg-slate-800 transition">
+                    <i class="fa-solid fa-qrcode text-base"></i>
+                  </button>
+                  <button onclick="openEditModal('${item.id}')" title="Editar" class="p-1.5 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-800 transition">
+                    <i class="fa-solid fa-pen-to-square text-base"></i>
+                  </button>
+                  <button onclick="deleteFilament('${item.id}')" title="Eliminar" class="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition">
+                    <i class="fa-solid fa-trash-can text-base"></i>
+                  </button>
                 </div>
-            `;
-            return card;
-        }
+              </div>
 
-        // Atualizar os Filtros de Marcas Disponíveis
-        function populateBrandFilter() {
-            const brandSelect = document.getElementById('filter-brand');
-            const currentSelected = brandSelect.value;
-            const brands = [...new Set(filaments.map(f => f.brand))].sort();
+              <!-- BARRA DE PROGRESSO DO PESO -->
+              <div class="mt-4 space-y-1.5">
+                <div class="flex justify-between text-xs">
+                  <span class="text-slate-400">Restante: <strong class="text-slate-200 font-semibold">${item.currentWeight}g</strong> / ${item.totalWeight}g</span>
+                  <span class="font-bold ${percentage < 20 ? 'text-rose-400' : 'text-slate-300'}">${percentage}%</span>
+                </div>
+                <div class="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden p-0.5 border border-slate-800">
+                  <div class="h-full rounded-full transition-all duration-500 ${progressColor}" style="width: ${percentage}%"></div>
+                </div>
+              </div>
 
-            brandSelect.innerHTML = '<option value="">Todas as Marcas</option>';
-            brands.forEach(b => {
-                const opt = document.createElement('option');
-                opt.value = b;
-                opt.textContent = b;
-                if (b === currentSelected) opt.selected = true;
-                brandSelect.appendChild(opt);
-            });
-        }
+              <!-- DETALHES TÉCNICOS -->
+              <div class="mt-4 grid grid-cols-2 gap-2 text-[11px] text-slate-400 bg-slate-900/40 p-2.5 rounded-xl border border-slate-800/60">
+                <div><i class="fa-solid fa-[#temperature-high] text-emerald-500 mr-1"></i> Nozzle: <span class="text-slate-300 font-medium">${item.tempNozzle || 'N/D'}°C</span></div>
+                <div><i class="fa-solid fa-[#border-all] text-teal-500 mr-1"></i> Bed: <span class="text-slate-300 font-medium">${item.tempBed || 'N/D'}°C</span></div>
+              </div>
 
-        // Atualizar Métricas globais no topo
-        function updateStats() {
-            const totalSpools = filaments.length;
-            const activeSpools = filaments.filter(f => f.remainingWeight > 0).length;
-            const totalWeightGram = filaments.reduce((acc, f) => acc + (Number(f.remainingWeight) || 0), 0);
-            const totalInitialGram = filaments.reduce((acc, f) => acc + (Number(f.initialWeight) || 0), 0);
-            const totalValue = filaments.reduce((acc, f) => {
-                const ratio = f.initialWeight > 0 ? (f.remainingWeight / f.initialWeight) : 0;
-                return acc + ((Number(f.price) || 0) * ratio);
-            }, 0);
-            const lowStockCount = filaments.filter(f => {
-                const r = f.initialWeight > 0 ? (f.remainingWeight / f.initialWeight) : 0;
-                return r < 0.15 && f.remainingWeight > 0;
-            }).length;
+              ${item.notes ? `<p class="mt-3 text-xs text-slate-400 italic bg-slate-900/20 p-2 rounded-lg border border-slate-800/40"><i class="fa-regular fa-note-sticky mr-1 text-slate-500"></i>${item.notes}</p>` : ''}
+            </div>
 
-            document.getElementById('stat-total-spools').textContent = totalSpools;
-            document.getElementById('stat-active-spools').textContent = `${activeSpools} ativas em uso`;
-            document.getElementById('stat-total-weight').textContent = `${(totalWeightGram / 1000).toFixed(2)} kg`;
-            
-            const weightPercent = totalInitialGram > 0 ? Math.round((totalWeightGram / totalInitialGram) * 100) : 0;
-            document.getElementById('stat-weight-percent').textContent = `${weightPercent}% do peso inicial`;
-            document.getElementById('stat-total-value').textContent = `${totalValue.toFixed(2)} €`;
-            document.getElementById('stat-low-stock').textContent = lowStockCount;
-        }
+            <!-- BOTÃO DE REGISTO DE CONSUMO -->
+            <div class="mt-5 pt-3 border-t border-slate-800/80 flex items-center justify-between">
+              <span class="text-[10px] font-mono text-slate-500">${item.id}</span>
+              <button onclick="openConsumeModal('${item.id}')" class="px-3 py-1.5 bg-slate-800 hover:bg-emerald-500 hover:text-white text-slate-300 border border-slate-700/80 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+                <i class="fa-solid fa-[#minus]"></i> Registar Consumo
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
 
-        // --- GESTÃO DE FILAMENTOS (CRIAR / EDITAR / APAGAR) ---
-        function openFilamentModal(filament = null) {
-            const modal = document.getElementById('filament-modal');
-            const form = document.getElementById('filament-form');
-            const title = document.getElementById('modal-title');
+    // GESTÃO DOS MODAIS
+    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
-            form.reset();
-            
-            if (filament) {
-                title.textContent = 'Editar Filamento';
-                document.getElementById('filament-id').value = filament.id;
-                document.getElementById('form-brand').value = filament.brand;
-                document.getElementById('form-type').value = filament.type;
-                document.getElementById('form-color-name').value = filament.colorName;
-                document.getElementById('form-color-hex').value = filament.colorHex || '#22c55e';
-                document.getElementById('form-initial-weight').value = filament.initialWeight;
-                document.getElementById('form-remaining-weight').value = filament.remainingWeight;
-                document.getElementById('form-price').value = filament.price || '';
-                document.getElementById('form-temp-nozzle').value = filament.tempNozzle || '';
-                document.getElementById('form-temp-bed').value = filament.tempBed || '';
-                document.getElementById('form-qr-code').value = filament.qrCode || '';
-                document.getElementById('form-notes').value = filament.notes || '';
-            } else {
-                title.textContent = 'Adicionar Novo Filamento';
-                document.getElementById('filament-id').value = '';
-                generateRandomQRId();
-            }
+    function openAddModal() {
+      document.getElementById('modal-title').textContent = 'Adicionar Filamento';
+      document.getElementById('filament-form').reset();
+      document.getElementById('form-id').value = '';
+      document.getElementById('form-color-hex').value = '#22c55e';
+      openModal('modal-filament');
+    }
 
-            modal.classList.remove('hidden');
-        }
+    function openEditModal(id) {
+      const item = filaments.find(f => f.id === id);
+      if (!item) return;
 
-        function closeFilamentModal() {
-            document.getElementById('filament-modal').classList.add('hidden');
-        }
+      document.getElementById('modal-title').textContent = 'Editar Filamento';
+      document.getElementById('form-id').value = item.id;
+      document.getElementById('form-brand').value = item.brand;
+      document.getElementById('form-material').value = item.material;
+      document.getElementById('form-color-name').value = item.colorName;
+      document.getElementById('form-color-hex').value = item.colorHex || '#22c55e';
+      document.getElementById('form-total-weight').value = item.totalWeight;
+      document.getElementById('form-current-weight').value = item.currentWeight;
+      document.getElementById('form-temp-nozzle').value = item.tempNozzle || '';
+      document.getElementById('form-temp-bed').value = item.tempBed || '';
+      document.getElementById('form-price').value = item.price || '';
+      document.getElementById('form-notes').value = item.notes || '';
 
-        function generateRandomQRId() {
-            const type = document.getElementById('form-type').value || 'FIL';
-            const randomHex = Math.floor(Math.random() * 16777215).toString(16).toUpperCase().padStart(6, '0');
-            document.getElementById('form-qr-code').value = `${type}-${randomHex}`;
-        }
+      openModal('modal-filament');
+    }
 
-        function saveFilament(e) {
-            e.preventDefault();
-            const id = document.getElementById('filament-id').value;
-            const brand = document.getElementById('form-brand').value.trim();
-            const type = document.getElementById('form-type').value;
-            const colorName = document.getElementById('form-color-name').value.trim();
-            const colorHex = document.getElementById('form-color-hex').value;
-            const initialWeight = parseFloat(document.getElementById('form-initial-weight').value) || 0;
-            const remainingWeight = parseFloat(document.getElementById('form-remaining-weight').value) || 0;
-            const price = parseFloat(document.getElementById('form-price').value) || 0;
-            const tempNozzle = document.getElementById('form-temp-nozzle').value.trim();
-            const tempBed = document.getElementById('form-temp-bed').value.trim();
-            let qrCode = document.getElementById('form-qr-code').value.trim();
-            const notes = document.getElementById('form-notes').value.trim();
+    function saveFilament(e) {
+      e.preventDefault();
+      const id = document.getElementById('form-id').value;
+      const isNew = !id;
 
-            if (!qrCode) {
-                qrCode = `${type}-${Math.floor(Math.random() * 1000000)}`;
-            }
+      const filamentData = {
+        id: id || 'FIL-' + Math.floor(1000 + Math.random() * 9000),
+        brand: document.getElementById('form-brand').value.trim(),
+        material: document.getElementById('form-material').value,
+        colorName: document.getElementById('form-color-name').value.trim(),
+        colorHex: document.getElementById('form-color-hex').value,
+        totalWeight: parseInt(document.getElementById('form-total-weight').value),
+        currentWeight: parseInt(document.getElementById('form-current-weight').value),
+        tempNozzle: document.getElementById('form-temp-nozzle').value.trim(),
+        tempBed: document.getElementById('form-temp-bed').value.trim(),
+        price: parseFloat(document.getElementById('form-price').value) || null,
+        notes: document.getElementById('form-notes').value.trim()
+      };
 
-            if (id) {
-                // Editar existente
-                const index = filaments.findIndex(f => f.id === id);
-                if (index !== -1) {
-                    filaments[index] = {
-                        ...filaments[index],
-                        brand, type, colorName, colorHex, initialWeight, remainingWeight, price, tempNozzle, tempBed, qrCode, notes
-                    };
-                    showToast('Filamento atualizado com sucesso!');
-                }
-            } else {
-                // Criar novo
-                const newFilament = {
-                    id: 'fil-' + Date.now(),
-                    brand, type, colorName, colorHex, initialWeight, remainingWeight, price, tempNozzle, tempBed, qrCode, notes
-                };
-                filaments.unshift(newFilament);
-                showToast('Novo filamento registado!');
-            }
+      if (isNew) {
+        filaments.unshift(filamentData);
+      } else {
+        const index = filaments.findIndex(f => f.id === id);
+        if (index !== -1) filaments[index] = filamentData;
+      }
 
-            saveToLocalStorage();
-            populateBrandFilter();
-            renderFilaments();
-            closeFilamentModal();
-        }
+      saveToStorage();
+      renderApp();
+      closeModal('modal-filament');
+    }
 
-        function editFilament(id) {
-            const item = filaments.find(f => f.id === id);
-            if (item) openFilamentModal(item);
-        }
+    function deleteFilament(id) {
+      if (confirm('Tem a certeza de que deseja eliminar esta bobina de filamento?')) {
+        filaments = filaments.filter(f => f.id !== id);
+        saveToStorage();
+        renderApp();
+      }
+    }
 
-        function deleteFilament(id) {
-            if (confirm('Tem a certeza de que pretende apagar este filamento?')) {
-                filaments = filaments.filter(f => f.id !== id);
-                saveToLocalStorage();
-                populateBrandFilter();
-                renderFilaments();
-                showToast('Filamento removido.', 'fa-trash-can text-rose-400');
-            }
-        }
+    // REGISTO DE CONSUMO
+    function openConsumeModal(id) {
+      const item = filaments.find(f => f.id === id);
+      if (!item) return;
+      activeConsumeId = id;
 
-        // --- SUBTRAIR CONSUMO RÁPIDO ---
-        function openConsumeModal(id) {
-            const item = filaments.find(f => f.id === id);
-            if (!item) return;
+      document.getElementById('consume-spool-info').innerHTML = `
+        <div class="w-6 h-6 rounded-full border border-slate-700 flex-shrink-0" style="background-color: ${item.colorHex}"></div>
+        <div>
+          <h4 class="font-bold text-sm text-slate-200">${item.brand} ${item.material}</h4>
+          <p class="text-xs text-slate-400">${item.colorName} • Atual: ${item.currentWeight}g</p>
+        </div>
+      `;
+      document.getElementById('consume-amount').value = 30;
+      openModal('modal-consume');
+    }
 
-            document.getElementById('consume-filament-id').value = item.id;
-            document.getElementById('consume-name').textContent = `${item.brand} ${item.type} - ${item.colorName}`;
-            document.getElementById('consume-current-weight').textContent = `Peso Atual: ${item.remainingWeight}g`;
-            document.getElementById('consume-color-dot').style.backgroundColor = item.colorHex || '#94a3b8';
-            document.getElementById('consume-amount').value = '';
+    function setConsumeAmount(val) {
+      document.getElementById('consume-amount').value = val;
+    }
 
-            document.getElementById('consume-modal').classList.remove('hidden');
-        }
+    function applyConsumption() {
+      const amount = parseInt(document.getElementById('consume-amount').value) || 0;
+      const item = filaments.find(f => f.id === activeConsumeId);
+      
+      if (item) {
+        item.currentWeight = Math.max(0, item.currentWeight - amount);
+        saveToStorage();
+        renderApp();
+        closeModal('modal-consume');
+      }
+    }
 
-        function closeConsumeModal() {
-            document.getElementById('consume-modal').classList.add('hidden');
-        }
+    // LEITOR QR CODE
+    function openScanner() {
+      openModal('modal-scanner');
+      html5QrcodeScanner = new Html5Qrcode("reader");
+      html5QrcodeScanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 220, height: 220 } },
+        (decodedText) => {
+          // Quando lê com sucesso um QR Code
+          closeScanner();
+          const found = filaments.find(f => f.id === decodedText || decodedText.includes(f.id));
+          if (found) {
+            openConsumeModal(found.id);
+          } else {
+            alert('Código QR não encontrado na lista: ' + decodedText);
+          }
+        },
+        (errorMessage) => { /* ignora erros de procura contínua */ }
+      ).catch(err => {
+        console.error("Erro na câmara: ", err);
+        alert("Não foi possível aceder à câmara.");
+        closeScanner();
+      });
+    }
 
-        function setConsumeAmount(grams) {
-            const input = document.getElementById('consume-amount');
-            const current = parseFloat(input.value) || 0;
-            input.value = current + grams;
-        }
+    function closeScanner() {
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.stop().then(() => {
+          html5QrcodeScanner.clear();
+          closeModal('modal-scanner');
+        }).catch(() => {
+          closeModal('modal-scanner');
+        });
+      } else {
+        closeModal('modal-scanner');
+      }
+    }
 
-        function applyConsumption(e) {
-            e.preventDefault();
-            const id = document.getElementById('consume-filament-id').value;
-            const amount = parseFloat(document.getElementById('consume-amount').value) || 0;
+    // GERADOR DE ETIQUETAS QR CODE
+    function openQRModal(id) {
+      const item = filaments.find(f => f.id === id);
+      if (!item) return;
 
-            const item = filaments.find(f => f.id === id);
-            if (item) {
-                item.remainingWeight = Math.max(0, item.remainingWeight - amount);
-                saveToLocalStorage();
-                renderFilaments();
-                showToast(`Deduzidos ${amount}g de filamento!`);
-            }
-            closeConsumeModal();
-        }
+      document.getElementById('qr-label-title').textContent = `${item.brand} ${item.material}`;
+      document.getElementById('qr-label-sub').textContent = `${item.colorName} (${item.totalWeight}g)`;
+      document.getElementById('qr-label-id').textContent = item.id;
 
-        // --- GERADOR E IMPRESSOR DE ETIQUETAS QR ---
-        function openQrPrintModal(id) {
-            const item = filaments.find(f => f.id === id);
-            if (!item) return;
+      const target = document.getElementById('qr-code-target');
+      target.innerHTML = '';
+      
+      new QRCode(target, {
+        text: item.id,
+        width: 130,
+        height: 130,
+        colorDark: "#0f172a",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+      });
 
-            document.getElementById('print-brand-type').textContent = `${item.brand} - ${item.type}`;
-            document.getElementById('print-color').textContent = item.colorName;
-            document.getElementById('print-qr-code').textContent = `ID: ${item.qrCode || item.id}`;
-
-            const container = document.getElementById('qrcode-container');
-            container.innerHTML = '';
-
-            // Gerar código QR no elemento
-            new QRCode(container, {
-                text: item.qrCode || item.id,
-                width: 140,
-                height: 140,
-                colorDark: "#000000",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.H
-            });
-
-            document.getElementById('qr-print-modal').classList.remove('hidden');
-        }
-
-        function closeQrPrintModal() {
-            document.getElementById('qr-print-modal').classList.add('hidden');
-        }
-
-        // --- SCANNER DE QR CODE DA CÂMARA ---
-        function openScannerModal() {
-            document.getElementById('scanner-modal').classList.remove('hidden');
-            document.getElementById('scan-result').classList.add('hidden');
-
-            if (!html5QrCodeScanner) {
-                html5QrCodeScanner = new Html5Qrcode("qr-reader");
-            }
-
-            const config = { fps: 10, qrbox: { width: 220, height: 220 } };
-
-            html5QrCodeScanner.start(
-                { facingMode: "environment" },
-                config,
-                onScanSuccess,
-                onScanFailure
-            ).catch(err => {
-                console.error("Erro ao iniciar câmara: ", err);
-                showToast("Não foi possível aceder à câmara.", "fa-triangle-exclamation text-rose-400");
-            });
-        }
-
-        function closeScannerModal() {
-            if (html5QrCodeScanner) {
-                html5QrCodeScanner.stop().then(() => {
-                    document.getElementById('scanner-modal').classList.add('hidden');
-                }).catch(() => {
-                    document.getElementById('scanner-modal').classList.add('hidden');
-                });
-            } else {
-                document.getElementById('scanner-modal').classList.add('hidden');
-            }
-        }
-
-        function onScanSuccess(decodedText, decodedResult) {
-            // Procura por ID direto ou QR code personalizado
-            const found = filaments.find(f => f.qrCode === decodedText || f.id === decodedText);
-
-            if (found) {
-                document.getElementById('scan-result').classList.remove('hidden');
-                document.getElementById('scan-result-text').textContent = `${found.brand} ${found.type} (${found.colorName}) - ${found.remainingWeight}g restantes`;
-                
-                showToast(`Encontrado: ${found.brand} ${found.colorName}`);
-                
-                // Fecha o scanner e abre a janela de dedução de consumo para o filamento encontrado
-                setTimeout(() => {
-                    closeScannerModal();
-                    openConsumeModal(found.id);
-                }, 1200);
-            } else {
-                document.getElementById('scan-result').classList.remove('hidden');
-                document.getElementById('scan-result-text').textContent = `Código lido: "${decodedText}" (Não associado a nenhum filamento)`;
-            }
-        }
-
-        function onScanFailure(error) {
-            // Callback contínuo para cada fotograma sem QR (ignorado propositadamente)
-        }
-
-        // --- UTILITÁRIOS & HELPER TOAST ---
-        function showToast(msg, iconClass = 'fa-circle-check text-emerald-400') {
-            const toast = document.getElementById('toast');
-            const toastMsg = document.getElementById('toast-message');
-            const toastIcon = document.getElementById('toast-icon');
-
-            toastMsg.textContent = msg;
-            toastIcon.className = `fa-solid ${iconClass} text-lg`;
-
-            toast.classList.remove('translate-y-20', 'opacity-0');
-            toast.classList.add('translate-y-0', 'opacity-100');
-
-            setTimeout(() => {
-                toast.classList.remove('translate-y-0', 'opacity-100');
-                toast.classList.add('translate-y-20', 'opacity-0');
-            }, 3000);
-        }
-
-        function escapeHtml(str) {
-            if (!str) return '';
-            return String(str)
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
-    </script>
+      openModal('modal-qr');
+    }
+  </script>
 </body>
 </html>
