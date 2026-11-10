@@ -58,7 +58,6 @@
       
       <div class="text-center mb-8 relative z-10">
         <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white shadow-lg shadow-emerald-500/20 mb-4">
-          <i class="fa-solid fa-[#3D]-cube text-2xl text-white"></i>
           <span class="font-bold text-2xl tracking-tighter">L</span>
         </div>
         <h2 class="text-2xl font-bold text-white tracking-tight">Lumine 3D</h2>
@@ -102,7 +101,7 @@
     </div>
   </div>
 
-  <!-- APLICAÇÃO PRINCIPAL (Escondida por defeito até autenticação) -->
+  <!-- APLICAÇÃO PRINCIPAL -->
   <div id="app-content" class="hidden">
     <!-- BARRA SUPERIOR / HEADER -->
     <header class="sticky top-0 z-30 glassmorphism border-b border-slate-800/80 mb-6">
@@ -118,14 +117,19 @@
         </div>
 
         <div class="flex items-center space-x-2 sm:space-x-3">
-          <button onclick="openScanner()" class="inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-semibold transition shadow-md shadow-emerald-500/10 active:scale-95">
+          <button onclick="openScanner('consume')" class="inline-flex items-center gap-2 px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-semibold transition shadow-md shadow-emerald-500/10 active:scale-95">
             <i class="fa-solid fa-qrcode text-base"></i>
-            <span class="hidden sm:inline">Ler QR Code</span>
+            <span class="hidden sm:inline">Ler / Consumir</span>
           </button>
           
+          <button onclick="openScanner('add')" class="inline-flex items-center gap-2 px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-semibold transition shadow-md shadow-teal-500/10 active:scale-95" title="Registar filamento antigo por QR Code">
+            <i class="fa-solid fa-barcode text-base"></i>
+            <span class="hidden md:inline">Adicionar QR</span>
+          </button>
+
           <button onclick="openAddModal()" class="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-sm font-semibold transition active:scale-95">
             <i class="fa-solid fa-plus text-emerald-400"></i>
-            <span class="hidden sm:inline">Novo Filamento</span>
+            <span class="hidden sm:inline">Novo</span>
           </button>
 
           <button onclick="handleLogout()" title="Encerrar Sessão" class="p-2 bg-slate-800/80 hover:bg-red-500/20 text-slate-400 hover:text-red-400 border border-slate-700/60 rounded-xl transition">
@@ -142,7 +146,7 @@
         <div class="p-4 bg-slate-800/50 border border-slate-800 rounded-2xl relative overflow-hidden">
           <div class="flex justify-between items-start">
             <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total em Stock</span>
-            <i class="fa-solid fa-[#weight-hanging] text-emerald-400 text-lg"></i>
+            <i class="fa-solid fa-weight-hanging text-emerald-400 text-lg"></i>
           </div>
           <div class="mt-2 flex items-baseline">
             <span id="stat-total-weight" class="text-2xl font-bold text-slate-100">0</span>
@@ -154,7 +158,7 @@
         <div class="p-4 bg-slate-800/50 border border-slate-800 rounded-2xl relative overflow-hidden">
           <div class="flex justify-between items-start">
             <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Bobinas Ativas</span>
-            <i class="fa-solid fa-[#compact-disc] text-teal-400 text-lg"></i>
+            <i class="fa-solid fa-compact-disc text-teal-400 text-lg"></i>
           </div>
           <div class="mt-2 flex items-baseline">
             <span id="stat-active-spools" class="text-2xl font-bold text-slate-100">0</span>
@@ -166,7 +170,7 @@
         <div class="p-4 bg-slate-800/50 border border-slate-800 rounded-2xl relative overflow-hidden">
           <div class="flex justify-between items-start">
             <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Valor Estimado</span>
-            <i class="fa-solid fa-[#euro-sign] text-amber-400 text-lg"></i>
+            <i class="fa-solid fa-euro-sign text-amber-400 text-lg"></i>
           </div>
           <div class="mt-2 flex items-baseline">
             <span id="stat-total-value" class="text-2xl font-bold text-slate-100">0.00</span>
@@ -178,7 +182,7 @@
         <div class="p-4 bg-slate-800/50 border border-slate-800 rounded-2xl relative overflow-hidden">
           <div class="flex justify-between items-start">
             <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Stock Baixo</span>
-            <i class="fa-solid fa-[#triangle-exclamation] text-rose-400 text-lg"></i>
+            <i class="fa-solid fa-triangle-exclamation text-rose-400 text-lg"></i>
           </div>
           <div class="mt-2 flex items-baseline">
             <span id="stat-low-stock" class="text-2xl font-bold text-rose-400">0</span>
@@ -225,7 +229,7 @@
       <!-- ESTADO VAZIO -->
       <div id="empty-state" class="hidden text-center py-16 bg-slate-800/20 rounded-2xl border border-dashed border-slate-800">
         <div class="w-16 h-16 bg-slate-800 text-slate-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
-          <i class="fa-solid fa-[#box-open]"></i>
+          <i class="fa-solid fa-box-open"></i>
         </div>
         <h3 class="text-base font-semibold text-slate-300">Nenhum filamento encontrado</h3>
         <p class="text-sm text-slate-500 max-w-sm mx-auto mt-1">Tente ajustar os filtros de pesquisa ou adicione um novo filamento à lista.</p>
@@ -270,13 +274,13 @@
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-semibold text-slate-400 mb-1">Nome da Cor *</label>
-            <input type="text" id="form-color-name" required placeholder="Ex: Verde Jade" 
+            <input type="text" id="form-color-name" required placeholder="Ex: Branco Pure" 
               class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-emerald-500 text-slate-100">
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-400 mb-1">Seletor de Cor</label>
             <div class="flex items-center gap-2">
-              <input type="color" id="form-color-hex" value="#22c55e" class="h-9 w-12 bg-slate-800 border border-slate-700 rounded-lg cursor-pointer p-1">
+              <input type="color" id="form-color-hex" value="#ffffff" class="h-9 w-12 bg-slate-800 border border-slate-700 rounded-lg cursor-pointer p-1">
               <span class="text-xs text-slate-400">Amostra visual</span>
             </div>
           </div>
@@ -298,12 +302,12 @@
         <div class="grid grid-cols-3 gap-3">
           <div>
             <label class="block text-xs font-semibold text-slate-400 mb-1">Temp. Nozzle (°C)</label>
-            <input type="text" id="form-temp-nozzle" placeholder="200-220" 
+            <input type="text" id="form-temp-nozzle" placeholder="210" 
               class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-emerald-500 text-slate-100">
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-400 mb-1">Temp. Bed (°C)</label>
-            <input type="text" id="form-temp-bed" placeholder="55-65" 
+            <input type="text" id="form-temp-bed" placeholder="60" 
               class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-emerald-500 text-slate-100">
           </div>
           <div>
@@ -315,7 +319,7 @@
 
         <div>
           <label class="block text-xs font-semibold text-slate-400 mb-1">Notas / Definições</label>
-          <textarea id="form-notes" rows="2" placeholder="Secar a 50°C durante 4h..." 
+          <textarea id="form-notes" rows="2" placeholder="Recuperado via QR Code antigo..." 
             class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-emerald-500 text-slate-100"></textarea>
         </div>
 
@@ -331,14 +335,14 @@
   <div id="modal-scanner" class="fixed inset-0 z-50 hidden bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
       <div class="px-6 py-4 border-b border-slate-800 flex justify-between items-center">
-        <h3 class="font-bold text-lg text-slate-100"><i class="fa-solid fa-qrcode text-emerald-400 mr-2"></i>Digitalizar QR Code</h3>
+        <h3 id="scanner-modal-title" class="font-bold text-lg text-slate-100"><i class="fa-solid fa-qrcode text-emerald-400 mr-2"></i>Digitalizar QR Code</h3>
         <button onclick="closeScanner()" class="text-slate-400 hover:text-slate-200">
           <i class="fa-solid fa-xmark text-lg"></i>
         </button>
       </div>
       <div class="p-6 text-center">
         <div id="reader" class="overflow-hidden rounded-xl bg-slate-950 border border-slate-800"></div>
-        <p class="text-xs text-slate-400 mt-4">Aproxime a câmara do QR Code colado na bobina de filamento.</p>
+        <p id="scanner-instruction" class="text-xs text-slate-400 mt-4">Aponte a câmara para o QR code da bobina.</p>
       </div>
     </div>
   </div>
@@ -391,8 +395,8 @@
         <!-- ÁREA IMPRIMÍVEL -->
         <div id="printable-area" class="p-4 bg-white text-slate-900 rounded-2xl border border-slate-200 shadow-sm inline-block w-full">
           <div id="qr-code-target" class="flex justify-center mb-3"></div>
-          <h4 id="qr-label-title" class="font-bold text-base leading-tight">Bambu Lab PLA</h4>
-          <p id="qr-label-sub" class="text-xs text-slate-600">Verde Jade (1000g)</p>
+          <h4 id="qr-label-title" class="font-bold text-base leading-tight">Bambu PLA</h4>
+          <p id="qr-label-sub" class="text-xs text-slate-600">Branco Pure (1000g)</p>
           <p id="qr-label-id" class="text-[10px] font-mono text-slate-400 mt-1 uppercase tracking-widest"></p>
         </div>
 
@@ -405,23 +409,18 @@
 
   <!-- JAVASCRIPT LOGIC -->
   <script>
-    // DADOS INICIAIS DE EXEMPLO
     const INITIAL_DATA = [
-      { id: "FIL-8912", brand: "Bambu Lab", material: "PLA", colorName: "Verde Jade", colorHex: "#22c55e", totalWeight: 1000, currentWeight: 750, tempNozzle: "200-220", tempBed: "55-65", price: 24.90, notes: "Excelente acabamento com perfil predefinido da Bambu." },
-      { id: "FIL-4321", brand: "Prusament", material: "PETG", colorName: "Laranja Prusa", colorHex: "#f97316", totalWeight: 1000, currentWeight: 320, tempNozzle: "240-250", tempBed: "80-90", price: 29.99, notes: "Ótima resistência mecânica. Manter seco." },
-      { id: "FIL-1092", brand: "eSUN", material: "ABS", colorName: "Preto Mate", colorHex: "#1e293b", totalWeight: 1000, currentWeight: 120, tempNozzle: "240-260", tempBed: "90-100", price: 21.50, notes: "Requer câmara fechada para evitar empenamento." },
-      { id: "FIL-6754", brand: "Polymaker", material: "TPU", colorName: "Transparente", colorHex: "#38bdf8", totalWeight: 750, currentWeight: 680, tempNozzle: "210-230", tempBed: "45-60", price: 34.00, notes: "Velocidade máx de impressão 30mm/s." }
+      { id: "FIL-F397896F", brand: "Bambu", material: "PLA", colorName: "Branco Pure", colorHex: "#ffffff", totalWeight: 1000, currentWeight: 1000, tempNozzle: "210", tempBed: "60", price: 24.90, notes: "Recuperado via etiqueta QR Code." }
     ];
 
     let filaments = JSON.parse(localStorage.getItem('lumine3d_filaments')) || INITIAL_DATA;
     let html5QrcodeScanner = null;
     let activeConsumeId = null;
+    let scannerMode = 'consume'; // 'consume' ou 'add'
 
-    // CREDENCIAIS DE ACESSO DEFINIDAS
     const AUTH_USER = "Lumine3D";
     const AUTH_PASS = "230026583";
 
-    // INICIALIZAÇÃO E AUTENTICAÇÃO
     window.addEventListener('DOMContentLoaded', () => {
       if (localStorage.getItem('lumine3d_authenticated') === 'true') {
         showApp();
@@ -465,7 +464,6 @@
       localStorage.setItem('lumine3d_filaments', JSON.stringify(filaments));
     }
 
-    // RENDERIZAR INTERFACE
     function renderApp() {
       const search = document.getElementById('search-input').value.toLowerCase();
       const matFilter = document.getElementById('filter-material').value;
@@ -548,7 +546,7 @@
                 </div>
               </div>
 
-              <!-- BARRA DE PROGRESSO DO PESO -->
+              <!-- BARRA DE PROGRESSO -->
               <div class="mt-4 space-y-1.5">
                 <div class="flex justify-between text-xs">
                   <span class="text-slate-400">Restante: <strong class="text-slate-200 font-semibold">${item.currentWeight}g</strong> / ${item.totalWeight}g</span>
@@ -561,8 +559,8 @@
 
               <!-- DETALHES TÉCNICOS -->
               <div class="mt-4 grid grid-cols-2 gap-2 text-[11px] text-slate-400 bg-slate-900/40 p-2.5 rounded-xl border border-slate-800/60">
-                <div><i class="fa-solid fa-[#temperature-high] text-emerald-500 mr-1"></i> Nozzle: <span class="text-slate-300 font-medium">${item.tempNozzle || 'N/D'}°C</span></div>
-                <div><i class="fa-solid fa-[#border-all] text-teal-500 mr-1"></i> Bed: <span class="text-slate-300 font-medium">${item.tempBed || 'N/D'}°C</span></div>
+                <div><i class="fa-solid fa-temperature-high text-emerald-500 mr-1"></i> Nozzle: <span class="text-slate-300 font-medium">${item.tempNozzle || 'N/D'}°C</span></div>
+                <div><i class="fa-solid fa-border-all text-teal-500 mr-1"></i> Bed: <span class="text-slate-300 font-medium">${item.tempBed || 'N/D'}°C</span></div>
               </div>
 
               ${item.notes ? `<p class="mt-3 text-xs text-slate-400 italic bg-slate-900/20 p-2 rounded-lg border border-slate-800/40"><i class="fa-regular fa-note-sticky mr-1 text-slate-500"></i>${item.notes}</p>` : ''}
@@ -572,7 +570,7 @@
             <div class="mt-5 pt-3 border-t border-slate-800/80 flex items-center justify-between">
               <span class="text-[10px] font-mono text-slate-500">${item.id}</span>
               <button onclick="openConsumeModal('${item.id}')" class="px-3 py-1.5 bg-slate-800 hover:bg-emerald-500 hover:text-white text-slate-300 border border-slate-700/80 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
-                <i class="fa-solid fa-[#minus]"></i> Registar Consumo
+                <i class="fa-solid fa-minus"></i> Registar Consumo
               </button>
             </div>
           </div>
@@ -580,14 +578,16 @@
       }).join('');
     }
 
-    // GESTÃO DOS MODAIS
     function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
     function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
-    function openAddModal() {
+    function openAddModal(prefilledId = '') {
       document.getElementById('modal-title').textContent = 'Adicionar Filamento';
       document.getElementById('filament-form').reset();
-      document.getElementById('form-id').value = '';
+      document.getElementById('form-id').value = prefilledId;
+      if(prefilledId) {
+        document.getElementById('form-notes').value = "Adicionado via QR Code: " + prefilledId;
+      }
       document.getElementById('form-color-hex').value = '#22c55e';
       openModal('modal-filament');
     }
@@ -618,7 +618,7 @@
       const isNew = !id;
 
       const filamentData = {
-        id: id || 'FIL-' + Math.floor(1000 + Math.random() * 9000),
+        id: id || 'FIL-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
         brand: document.getElementById('form-brand').value.trim(),
         material: document.getElementById('form-material').value,
         colorName: document.getElementById('form-color-name').value.trim(),
@@ -651,7 +651,6 @@
       }
     }
 
-    // REGISTO DE CONSUMO
     function openConsumeModal(id) {
       const item = filaments.find(f => f.id === id);
       if (!item) return;
@@ -684,24 +683,50 @@
       }
     }
 
-    // LEITOR QR CODE
-    function openScanner() {
+    // SCANNER INTELIGENTE (CONSUMIR OU ADICIONAR)
+    function openScanner(mode = 'consume') {
+      scannerMode = mode;
+      const titleEl = document.getElementById('scanner-modal-title');
+      const instEl = document.getElementById('scanner-instruction');
+
+      if (mode === 'add') {
+        titleEl.innerHTML = '<i class="fa-solid fa-barcode text-teal-400 mr-2"></i>Adicionar via QR Code Antigo';
+        instEl.textContent = 'Aponte ao QR code da bobina antiga para recuperar o ID.';
+      } else {
+        titleEl.innerHTML = '<i class="fa-solid fa-qrcode text-emerald-400 mr-2"></i>Digitalizar QR Code';
+        instEl.textContent = 'Aproxime a câmara do QR code para registar consumo.';
+      }
+
       openModal('modal-scanner');
       html5QrcodeScanner = new Html5Qrcode("reader");
       html5QrcodeScanner.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 220, height: 220 } },
         (decodedText) => {
-          // Quando lê com sucesso um QR Code
           closeScanner();
-          const found = filaments.find(f => f.id === decodedText || decodedText.includes(f.id));
-          if (found) {
-            openConsumeModal(found.id);
+          
+          if (scannerMode === 'add') {
+            // Verificar se já existe
+            const existing = filaments.find(f => f.id === decodedText || decodedText.includes(f.id));
+            if (existing) {
+              alert('Este filamento com ID ' + existing.id + ' já se encontra registado no sistema!');
+              openConsumeModal(existing.id);
+            } else {
+              // Abrir modal de novo filamento com o ID preenchido
+              openAddModal(decodedText);
+            }
           } else {
-            alert('Código QR não encontrado na lista: ' + decodedText);
+            const found = filaments.find(f => f.id === decodedText || decodedText.includes(f.id));
+            if (found) {
+              openConsumeModal(found.id);
+            } else {
+              if (confirm('QR Code "' + decodedText + '" não encontrado. Deseja adicioná-lo agora ao inventário?')) {
+                openAddModal(decodedText);
+              }
+            }
           }
         },
-        (errorMessage) => { /* ignora erros de procura contínua */ }
+        (errorMessage) => {}
       ).catch(err => {
         console.error("Erro na câmara: ", err);
         alert("Não foi possível aceder à câmara.");
@@ -722,7 +747,6 @@
       }
     }
 
-    // GERADOR DE ETIQUETAS QR CODE
     function openQRModal(id) {
       const item = filaments.find(f => f.id === id);
       if (!item) return;
