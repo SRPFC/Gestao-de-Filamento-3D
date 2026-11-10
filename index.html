@@ -337,4 +337,475 @@
       <div class="px-6 py-4 border-b border-slate-800 flex justify-between items-center">
         <h3 id="scanner-modal-title" class="font-bold text-lg text-slate-100"><i class="fa-solid fa-qrcode text-emerald-400 mr-2"></i>Digitalizar QR Code</h3>
         <button onclick="closeScanner()" class="text-slate-400 hover:text-slate-200">
-          <i class="fa-solid fa-xmark text
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div class="p-6 text-center">
+        <div id="reader" class="overflow-hidden rounded-xl bg-slate-950 border border-slate-800"></div>
+        <p id="scanner-instruction" class="text-xs text-slate-400 mt-4">Aponte a câmara para o QR code da bobina.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DEDUZIR PESO APÓS IMPRESSÃO -->
+  <div id="modal-consume" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-800 flex justify-between items-center">
+        <h3 class="font-bold text-lg text-slate-100">Registar Consumo</h3>
+        <button onclick="closeModal('modal-consume')" class="text-slate-400 hover:text-slate-200">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div class="p-6 space-y-4">
+        <div id="consume-spool-info" class="p-3 bg-slate-800/60 rounded-xl border border-slate-800 flex items-center gap-3">
+          <!-- Dados da bobina selecionada -->
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Peso Impresso (g)</label>
+          <input type="number" id="consume-amount" value="30" min="1" step="1" 
+            class="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-lg font-bold text-emerald-400 focus:outline-none focus:border-emerald-500">
+        </div>
+
+        <div class="grid grid-cols-4 gap-2">
+          <button type="button" onclick="setConsumeAmount(10)" class="py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 rounded-lg">+10g</button>
+          <button type="button" onclick="setConsumeAmount(25)" class="py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 rounded-lg">+25g</button>
+          <button type="button" onclick="setConsumeAmount(50)" class="py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 rounded-lg">+50g</button>
+          <button type="button" onclick="setConsumeAmount(100)" class="py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 rounded-lg">+100g</button>
+        </div>
+
+        <button onclick="applyConsumption()" class="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition shadow-md shadow-emerald-500/20">
+          Subtrair do Stock
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: VISUALIZAR / IMPRIMIR QR CODE E ETIQUETA -->
+  <div id="modal-qr" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-800 flex justify-between items-center">
+        <h3 class="font-bold text-lg text-slate-100">Etiqueta QR Code</h3>
+        <button onclick="closeModal('modal-qr')" class="text-slate-400 hover:text-slate-200">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      
+      <div class="p-6 text-center space-y-4">
+        <!-- ÁREA IMPRIMÍVEL -->
+        <div id="printable-area" class="p-4 bg-white text-slate-900 rounded-2xl border border-slate-200 shadow-sm inline-block w-full">
+          <div id="qr-code-target" class="flex justify-center mb-3"></div>
+          <h4 id="qr-label-title" class="font-bold text-base leading-tight">Bambu PLA</h4>
+          <p id="qr-label-sub" class="text-xs text-slate-600">Branco Pure (1000g)</p>
+          <p id="qr-label-id" class="text-[10px] font-mono text-slate-400 mt-1 uppercase tracking-widest"></p>
+        </div>
+
+        <button onclick="window.print()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-print"></i> Imprimir Etiqueta
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    const INITIAL_DATA = [
+      { id: "FIL-0A44D240", brand: "Bambu Lab", material: "PLA", colorName: "Branco Pure", colorHex: "#ffffff", totalWeight: 1000, currentWeight: 1000, tempNozzle: "210", tempBed: "60", price: 24.90, notes: "Exemplo de filamento em stock" }
+    ];
+
+    let filaments = JSON.parse(localStorage.getItem('lumine3d_filaments')) || INITIAL_DATA;
+    let html5QrcodeScanner = null;
+    let activeConsumeId = null;
+    let scannerMode = 'consume';
+
+    const AUTH_USER = "Lumine3D";
+    const AUTH_PASS = "230026583";
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (localStorage.getItem('lumine3d_authenticated') === 'true') {
+        showApp();
+      } else {
+        showAuthScreen();
+      }
+    });
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const user = document.getElementById('login-username').value.trim();
+      const pass = document.getElementById('login-password').value.trim();
+      const errorDiv = document.getElementById('login-error');
+
+      if (user === AUTH_USER && pass === AUTH_PASS) {
+        localStorage.setItem('lumine3d_authenticated', 'true');
+        errorDiv.classList.add('hidden');
+        showApp();
+      } else {
+        errorDiv.classList.remove('hidden');
+      }
+    }
+
+    function handleLogout() {
+      localStorage.removeItem('lumine3d_authenticated');
+      showAuthScreen();
+    }
+
+    function showAuthScreen() {
+      document.getElementById('auth-screen').classList.remove('hidden');
+      document.getElementById('app-content').classList.add('hidden');
+    }
+
+    function showApp() {
+      document.getElementById('auth-screen').classList.add('hidden');
+      document.getElementById('app-content').classList.remove('hidden');
+      renderApp();
+    }
+
+    function saveToStorage() {
+      localStorage.setItem('lumine3d_filaments', JSON.stringify(filaments));
+    }
+
+    function renderApp() {
+      const search = document.getElementById('search-input').value.toLowerCase();
+      const matFilter = document.getElementById('filter-material').value;
+      const statusFilter = document.getElementById('filter-status').value;
+
+      const filtered = filaments.filter(f => {
+        const matchesSearch = f.brand.toLowerCase().includes(search) || 
+                              f.colorName.toLowerCase().includes(search) || 
+                              f.material.toLowerCase().includes(search) ||
+                              f.id.toLowerCase().includes(search);
+        
+        const matchesMat = !matFilter || f.material === matFilter;
+        
+        let status = 'Em Uso';
+        if (f.currentWeight <= 0) status = 'Vazio';
+        else if (f.currentWeight >= f.totalWeight) status = 'Novo';
+        const matchesStatus = !statusFilter || status === statusFilter;
+
+        return matchesSearch && matchesMat && matchesStatus;
+      });
+
+      renderStats();
+      renderGrid(filtered);
+    }
+
+    function renderStats() {
+      const totalWeightGrams = filaments.reduce((acc, f) => acc + f.currentWeight, 0);
+      const activeCount = filaments.filter(f => f.currentWeight > 0).length;
+      const totalVal = filaments.reduce((acc, f) => acc + (f.price ? (f.price * (f.currentWeight / f.totalWeight)) : 0), 0);
+      const lowStockCount = filaments.filter(f => f.currentWeight > 0 && f.currentWeight < 200).length;
+
+      document.getElementById('stat-total-weight').textContent = (totalWeightGrams / 1000).toFixed(2);
+      document.getElementById('stat-active-spools').textContent = activeCount;
+      document.getElementById('stat-total-value').textContent = totalVal.toFixed(2);
+      document.getElementById('stat-low-stock').textContent = lowStockCount;
+    }
+
+    function renderGrid(items) {
+      const grid = document.getElementById('filament-grid');
+      const emptyState = document.getElementById('empty-state');
+
+      if (items.length === 0) {
+        grid.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      grid.innerHTML = items.map(item => {
+        const percentage = Math.max(0, Math.min(100, Math.round((item.currentWeight / item.totalWeight) * 100)));
+        let progressColor = 'bg-emerald-500';
+        if (percentage < 20) progressColor = 'bg-rose-500';
+        else if (percentage < 50) progressColor = 'bg-amber-500';
+
+        return `
+          <div class="bg-slate-800/40 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition flex flex-col justify-between relative group">
+            <div>
+              <div class="flex items-start justify-between mb-3">
+                <div class="flex items-center space-x-3">
+                  <div class="w-7 h-7 rounded-full border-2 border-slate-700 shadow-inner flex-shrink-0" style="background-color: ${item.colorHex}"></div>
+                  <div>
+                    <h3 class="font-bold text-slate-100 leading-tight">${item.brand}</h3>
+                    <div class="flex items-center gap-2 mt-0.5">
+                      <span class="text-xs px-2 py-0.5 rounded-md bg-slate-800 font-semibold text-emerald-400 border border-slate-700/50">${item.material}</span>
+                      <span class="text-xs text-slate-400 font-medium">${item.colorName}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex items-center space-x-1">
+                  <button onclick="openQRModal('${item.id}')" title="Etiqueta QR Code" class="p-1.5 text-slate-400 hover:text-emerald-400 rounded-lg hover:bg-slate-800 transition">
+                    <i class="fa-solid fa-qrcode text-base"></i>
+                  </button>
+                  <button onclick="openEditModal('${item.id}')" title="Editar" class="p-1.5 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-800 transition">
+                    <i class="fa-solid fa-pen-to-square text-base"></i>
+                  </button>
+                  <button onclick="deleteFilament('${item.id}')" title="Eliminar" class="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition">
+                    <i class="fa-solid fa-trash-can text-base"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- BARRA DE PROGRESSO -->
+              <div class="mt-4 space-y-1.5">
+                <div class="flex justify-between text-xs">
+                  <span class="text-slate-400">Restante: <strong class="text-slate-200 font-semibold">${item.currentWeight}g</strong> / ${item.totalWeight}g</span>
+                  <span class="font-bold ${percentage < 20 ? 'text-rose-400' : 'text-slate-300'}">${percentage}%</span>
+                </div>
+                <div class="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden p-0.5 border border-slate-800">
+                  <div class="h-full rounded-full transition-all duration-500 ${progressColor}" style="width: ${percentage}%"></div>
+                </div>
+              </div>
+
+              <!-- DETALHES TÉCNICOS -->
+              <div class="mt-4 grid grid-cols-2 gap-2 text-[11px] text-slate-400 bg-slate-900/40 p-2.5 rounded-xl border border-slate-800/60">
+                <div><i class="fa-solid fa-temperature-high text-emerald-500 mr-1"></i> Nozzle: <span class="text-slate-300 font-medium">${item.tempNozzle || 'N/D'}°C</span></div>
+                <div><i class="fa-solid fa-border-all text-teal-500 mr-1"></i> Bed: <span class="text-slate-300 font-medium">${item.tempBed || 'N/D'}°C</span></div>
+              </div>
+
+              ${item.notes ? `<p class="mt-3 text-xs text-slate-400 italic bg-slate-900/20 p-2 rounded-lg border border-slate-800/40"><i class="fa-regular fa-note-sticky mr-1 text-slate-500"></i>${item.notes}</p>` : ''}
+            </div>
+
+            <!-- BOTÃO DE REGISTO DE CONSUMO -->
+            <div class="mt-5 pt-3 border-t border-slate-800/80 flex items-center justify-between">
+              <span class="text-[10px] font-mono text-slate-500">${item.id}</span>
+              <button onclick="openConsumeModal('${item.id}')" class="px-3 py-1.5 bg-slate-800 hover:bg-emerald-500 hover:text-white text-slate-300 border border-slate-700/80 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+                <i class="fa-solid fa-minus"></i> Registar Consumo
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    // PREENCHIMENTO AUTOMÁTICO INTELIGENTE VIA QR CODE
+    function openAddModal(scannedText = '') {
+      document.getElementById('modal-title').textContent = 'Adicionar Filamento';
+      document.getElementById('filament-form').reset();
+      
+      let parsedId = '';
+      let parsedBrand = '';
+      let parsedMaterial = 'PLA';
+      let parsedColor = '';
+      let parsedNozzle = '210';
+      let parsedBed = '60';
+
+      if (scannedText) {
+        // Extrai ID se existir padrão FIL-XXXX
+        const idMatch = scannedText.match(/FIL-[A-Z0-9]+/i);
+        if (idMatch) parsedId = idMatch[0].toUpperCase();
+
+        // Extrai Material
+        const matMatch = scannedText.match(/(PLA|PETG|ABS|TPU|ASA|PC|Nylon)/i);
+        if (matMatch) parsedMaterial = matMatch[0].toUpperCase();
+
+        // Extrai Marca
+        if (scannedText.toLowerCase().includes('bambu')) parsedBrand = 'Bambu Lab';
+        else if (scannedText.toLowerCase().includes('prusa')) parsedBrand = 'Prusament';
+        else if (scannedText.toLowerCase().includes('esun')) parsedBrand = 'eSUN';
+
+        // Extrai Cor
+        if (scannedText.toLowerCase().includes('branco')) parsedColor = 'Branco Pure';
+        else if (scannedText.toLowerCase().includes('preto')) parsedColor = 'Preto';
+        else if (scannedText.toLowerCase().includes('verde')) parsedColor = 'Verde';
+
+        // Extrai Temps
+        const tempMatch = scannedText.match(/(\d{3})\/(\d{2,3})/);
+        if (tempMatch) {
+          parsedNozzle = tempMatch[1];
+          parsedBed = tempMatch[2];
+        }
+      }
+
+      document.getElementById('form-id').value = parsedId;
+      document.getElementById('form-brand').value = parsedBrand;
+      document.getElementById('form-material').value = parsedMaterial;
+      document.getElementById('form-color-name').value = parsedColor;
+      document.getElementById('form-color-hex').value = parsedColor.toLowerCase().includes('branco') ? '#ffffff' : '#22c55e';
+      document.getElementById('form-total-weight').value = 1000;
+      document.getElementById('form-current-weight').value = 1000;
+      document.getElementById('form-temp-nozzle').value = parsedNozzle;
+      document.getElementById('form-temp-bed').value = parsedBed;
+      document.getElementById('form-notes').value = scannedText ? `Lido via QR Code: ${scannedText}` : '';
+
+      openModal('modal-filament');
+    }
+
+    function openEditModal(id) {
+      const item = filaments.find(f => f.id === id);
+      if (!item) return;
+
+      document.getElementById('modal-title').textContent = 'Editar Filamento';
+      document.getElementById('form-id').value = item.id;
+      document.getElementById('form-brand').value = item.brand;
+      document.getElementById('form-material').value = item.material;
+      document.getElementById('form-color-name').value = item.colorName;
+      document.getElementById('form-color-hex').value = item.colorHex || '#22c55e';
+      document.getElementById('form-total-weight').value = item.totalWeight;
+      document.getElementById('form-current-weight').value = item.currentWeight;
+      document.getElementById('form-temp-nozzle').value = item.tempNozzle || '';
+      document.getElementById('form-temp-bed').value = item.tempBed || '';
+      document.getElementById('form-price').value = item.price || '';
+      document.getElementById('form-notes').value = item.notes || '';
+
+      openModal('modal-filament');
+    }
+
+    function saveFilament(e) {
+      e.preventDefault();
+      const customId = document.getElementById('form-id').value.trim();
+
+      const filamentData = {
+        id: customId || 'FIL-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+        brand: document.getElementById('form-brand').value.trim() || 'Desconhecida',
+        material: document.getElementById('form-material').value,
+        colorName: document.getElementById('form-color-name').value.trim() || 'Standard',
+        colorHex: document.getElementById('form-color-hex').value,
+        totalWeight: parseInt(document.getElementById('form-total-weight').value) || 1000,
+        currentWeight: parseInt(document.getElementById('form-current-weight').value) || 1000,
+        tempNozzle: document.getElementById('form-temp-nozzle').value.trim(),
+        tempBed: document.getElementById('form-temp-bed').value.trim(),
+        price: parseFloat(document.getElementById('form-price').value) || null,
+        notes: document.getElementById('form-notes').value.trim()
+      };
+
+      const existingIndex = filaments.findIndex(f => f.id === filamentData.id);
+      if (existingIndex !== -1) {
+        filaments[existingIndex] = filamentData;
+      } else {
+        filaments.unshift(filamentData);
+      }
+
+      saveToStorage();
+      renderApp();
+      closeModal('modal-filament');
+    }
+
+    function deleteFilament(id) {
+      if (confirm('Tem a certeza de que deseja eliminar esta bobina de filamento?')) {
+        filaments = filaments.filter(f => f.id !== id);
+        saveToStorage();
+        renderApp();
+      }
+    }
+
+    function openConsumeModal(id) {
+      const item = filaments.find(f => f.id === id);
+      if (!item) return;
+      activeConsumeId = id;
+
+      document.getElementById('consume-spool-info').innerHTML = `
+        <div class="w-6 h-6 rounded-full border border-slate-700 flex-shrink-0" style="background-color: ${item.colorHex}"></div>
+        <div>
+          <h4 class="font-bold text-sm text-slate-200">${item.brand} ${item.material}</h4>
+          <p class="text-xs text-slate-400">${item.colorName} • Atual: ${item.currentWeight}g</p>
+        </div>
+      `;
+      document.getElementById('consume-amount').value = 30;
+      openModal('modal-consume');
+    }
+
+    function setConsumeAmount(val) {
+      document.getElementById('consume-amount').value = val;
+    }
+
+    function applyConsumption() {
+      const amount = parseInt(document.getElementById('consume-amount').value) || 0;
+      const item = filaments.find(f => f.id === activeConsumeId);
+      
+      if (item) {
+        item.currentWeight = Math.max(0, item.currentWeight - amount);
+        saveToStorage();
+        renderApp();
+        closeModal('modal-consume');
+      }
+    }
+
+    function openScanner(mode = 'consume') {
+      scannerMode = mode;
+      const titleEl = document.getElementById('scanner-modal-title');
+      const instEl = document.getElementById('scanner-instruction');
+
+      if (mode === 'add') {
+        titleEl.innerHTML = '<i class="fa-solid fa-barcode text-teal-400 mr-2"></i>Adicionar via QR Code';
+        instEl.textContent = 'Aponte a câmara ao QR code da etiqueta antiga.';
+      } else {
+        titleEl.innerHTML = '<i class="fa-solid fa-qrcode text-emerald-400 mr-2"></i>Digitalizar QR Code';
+        instEl.textContent = 'Aproxime a câmara do QR code para registar consumo.';
+      }
+
+      openModal('modal-scanner');
+      html5QrcodeScanner = new Html5Qrcode("reader");
+      html5QrcodeScanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 220, height: 220 } },
+        (decodedText) => {
+          closeScanner();
+          
+          const existing = filaments.find(f => f.id === decodedText || decodedText.includes(f.id));
+          if (scannerMode === 'add') {
+            if (existing) {
+              alert('O filamento com ID ' + existing.id + ' já existe! A abrir janela de consumo.');
+              openConsumeModal(existing.id);
+            } else {
+              openAddModal(decodedText);
+            }
+          } else {
+            if (existing) {
+              openConsumeModal(existing.id);
+            } else {
+              if (confirm('QR Code "' + decodedText + '" não encontrado no stock. Adicionar agora?')) {
+                openAddModal(decodedText);
+              }
+            }
+          }
+        },
+        (errorMessage) => {}
+      ).catch(err => {
+        console.error("Erro na câmara: ", err);
+        alert("Não foi possível aceder à câmara.");
+        closeScanner();
+      });
+    }
+
+    function closeScanner() {
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.stop().then(() => {
+          html5QrcodeScanner.clear();
+          closeModal('modal-scanner');
+        }).catch(() => {
+          closeModal('modal-scanner');
+        });
+      } else {
+        closeModal('modal-scanner');
+      }
+    }
+
+    function openQRModal(id) {
+      const item = filaments.find(f => f.id === id);
+      if (!item) return;
+
+      document.getElementById('qr-label-title').textContent = `${item.brand} ${item.material}`;
+      document.getElementById('qr-label-sub').textContent = `${item.colorName} (${item.totalWeight}g)`;
+      document.getElementById('qr-label-id').textContent = item.id;
+
+      const target = document.getElementById('qr-code-target');
+      target.innerHTML = '';
+      
+      new QRCode(target, {
+        text: item.id,
+        width: 130,
+        height: 130,
+        colorDark: "#0f172a",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+      });
+
+      openModal('modal-qr');
+    }
+  </script>
+</body>
+</html>
